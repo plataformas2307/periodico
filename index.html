@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121923">
+  <meta name="description" content="Lector de periódico en formato flipbook">
+  <title>Mi periódico | Flipbook</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-icon" aria-hidden="true">▤</span><div><strong>Mi periódico</strong><small>Edición digital · Flipbook</small></div></div>
+      <div class="top-actions">
+        <label class="file-button" for="pdf-file" title="Abrir un PDF desde tu dispositivo">Abrir PDF</label>
+        <input id="pdf-file" type="file" accept="application/pdf,.pdf" hidden>
+        <button id="fullscreen" class="icon-button" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
+      </div>
+    </header>
+    <main class="reader">
+      <div class="reader-heading"><div><h1>Lectura interactiva</h1><p>Arrastra una esquina o usa las flechas para pasar las páginas.</p></div><span id="document-name" class="document-name">Periodico.pdf</span></div>
+      <div id="stage" class="stage" aria-label="Visor de páginas">
+        <div id="book" class="book"></div>
+        <div id="status" class="status" role="status"><span class="spinner"></span><span id="status-text">Cargando periódico…</span></div>
+      </div>
+      <nav class="toolbar" aria-label="Controles de lectura">
+        <button id="first" class="control" title="Primera página" aria-label="Primera página">⇤</button>
+        <button id="prev" class="control" title="Anterior" aria-label="Página anterior">←</button>
+        <div class="page-counter"><label for="page-input">Página</label><input id="page-input" type="number" min="1" value="1" aria-label="Ir a página"><span id="total-pages">/ —</span></div>
+        <button id="next" class="control" title="Siguiente" aria-label="Página siguiente">→</button>
+        <button id="last" class="control" title="Última página" aria-label="Última página">⇥</button>
+        <span class="toolbar-separator"></span>
+        <button id="zoom-out" class="control" title="Reducir" aria-label="Reducir zoom">−</button>
+        <span id="zoom-value" class="zoom-value">100%</span>
+        <button id="zoom-in" class="control" title="Ampliar" aria-label="Ampliar zoom">+</button>
+        <a id="download" class="control download" href="Periodico.pdf" download="Periodico.pdf" title="Descargar PDF">↓ <span>PDF</span></a>
+      </nav>
+      <p class="hint" id="hint">En móvil se muestra una página a la vez. Puedes usar las flechas del teclado.</p>
+    </main>
+    <footer>Visor de lectura · Compatible con escritorio y móvil</footer>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
