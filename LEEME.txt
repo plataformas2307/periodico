@@ -1,9 +1,10 @@
-Flipbook Periodico V2.4 para GitHub Pages
+FLIPBOOK V2.6 - GITHUB PAGES
 
-Reemplaza index.html, css/styles.css y js/app.js. Conserva Periodico.pdf en la raiz.
+1. Sustituye index.html, css/styles.css, js/app.js.
+2. Coloca favi.png y perfil.jpg en la MISMA carpeta que index.html (no incluidos porque no fueron adjuntados).
+3. Conserva Periodico.pdf en esa carpeta.
+4. Publica los cambios en GitHub Pages.
+5. Comprueba https://plataformas2307.github.io/periodico/favi.png y https://plataformas2307.github.io/periodico/perfil.jpg
+6. Comparte https://plataformas2307.github.io/periodico/ en WhatsApp. Puede tardar en renovarse la miniatura por cache de WhatsApp/Meta.
 
-Cambios: botones inferiores compactos, cabecera oculta en movil, sin Abrir PDF, sonido sintetizado de hoja con boton para activar/desactivar, acceso a pantalla completa en barra inferior movil.
-
-Dependencias PDF.js y StPageFlip por CDN; requiere conexion.
-
-Publica y actualiza con Ctrl+Shift+R. Prueba en telefono y escritorio.
+Se mantiene el visor V2.5 (doble página PC, una en móvil).
