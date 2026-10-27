@@ -6,6 +6,7 @@
   const controls = ['first','prev','next','last','zoom-out','zoom-in'];
   let flip = null, pdf = null, zoom = 1, pdfUrl = 'Periodico.pdf', objectUrl = null;
   let pageCount = 0, loadingToken = 0;
+  let masterCanvases = [];
   let pageRatio = .72, resizeTimer = null;
   const reader = document.querySelector('.reader');
   const worker = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -26,6 +27,7 @@
   function clearBook() {
     if (flip) { try { flip.destroy(); } catch(e) { console.warn(e); } flip = null; }
     bookEl.innerHTML = '';
+    masterCanvases = [];
   }
   async function renderPdf(url, displayName) {
     const token = ++loadingToken;
@@ -53,6 +55,7 @@
       if (!pageCount) throw new Error('El archivo no contiene páginas.');
       $('total-pages').textContent = `/ ${pageCount}`;
       // Renderizar páginas a una resolución suficiente para lectura y zoom moderado.
+      masterCanvases = [];
       const first = await pdf.getPage(1);
       const vp = first.getViewport({scale:1});
       const ratio = vp.width / vp.height;
@@ -72,6 +75,7 @@
         const wrapper = document.createElement('div'); wrapper.className = 'page';
         const content = document.createElement('div'); content.className = 'page-content';
         content.appendChild(canvas); wrapper.appendChild(content); bookEl.appendChild(wrapper);
+        masterCanvases.push(canvas);
         page.cleanup();
       }
       if (token !== loadingToken) return;
@@ -86,26 +90,36 @@
   }
   // Dimensiones calculadas para que se vean las páginas completas, sin cortes.
   function fitDimensions() {
-    const w = Math.max(240, stage.clientWidth - 32);
-    const h = Math.max(260, stage.clientHeight - 28);
-    const single = window.innerWidth <= 650 || w < 650;
+    const w = Math.max(240, stage.clientWidth - 18);
+    const h = Math.max(260, stage.clientHeight - 18);
+    const single = window.innerWidth <= 650 || w < 600;
     const pageWidth = Math.floor(Math.min(w / (single ? 1 : 2), h * pageRatio));
     return { width: Math.max(120,pageWidth), height: Math.max(170,Math.floor(pageWidth/pageRatio)) };
   }
+  // Recrear el libro desde canvases maestros que NUNCA pertenecen al DOM de PageFlip.
+  // Esto evita que destroy() borre o invalide las páginas al salir de pantalla completa.
   function initFlip(pageIndex = 0) {
-    if (!pageCount || !bookEl.querySelector('.page')) return;
-    const pages = Array.from(bookEl.querySelectorAll('.page'));
+    if (!pageCount || !masterCanvases.length) return;
     if (flip) {
-      try { flip.destroy(); } catch(e) { console.warn(e); }
+      try { flip.destroy(); } catch(e) { console.warn('Reinicio del visor:', e); }
       flip = null;
-      // La librería puede modificar el DOM al destruirse.
-      bookEl.replaceChildren(...pages);
     }
+    bookEl.replaceChildren();
+    const fragment = document.createDocumentFragment();
+    for (const original of masterCanvases) {
+      const canvas = document.createElement('canvas');
+      canvas.width = original.width; canvas.height = original.height;
+      canvas.getContext('2d', {alpha:false}).drawImage(original, 0, 0);
+      const wrapper = document.createElement('div'); wrapper.className = 'page';
+      const content = document.createElement('div'); content.className = 'page-content';
+      content.appendChild(canvas); wrapper.appendChild(content); fragment.appendChild(wrapper);
+    }
+    bookEl.appendChild(fragment);
     const dims = fitDimensions();
     flip = new St.PageFlip(bookEl, {
       width:dims.width, height:dims.height, size:'fixed',
-      maxShadowOpacity:.45, showCover:false, mobileScrollSupport:false,
-      usePortrait:true, flippingTime:650, drawShadow:true, autoSize:true
+      maxShadowOpacity:.35, showCover:false, mobileScrollSupport:false,
+      usePortrait:true, flippingTime:600, drawShadow:true, autoSize:false
     });
     flip.loadFromHTML(bookEl.querySelectorAll('.page'));
     flip.on('flip', updateCounter);
@@ -114,21 +128,25 @@
     updateCounter();
   }
   function refitBook() {
-    if (!flip || !pageCount) return;
+    if (!flip || !pageCount || !masterCanvases.length) return;
     const current = flip.getCurrentPageIndex();
     initFlip(current);
     applyZoom();
   }
-  window.addEventListener('resize', () => {
+  function scheduleRefit(delay=160) {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(refitBook, 180);
-  });
+    resizeTimer = setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(refitBook)), delay);
+  }
+  window.addEventListener('resize', () => scheduleRefit());
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => scheduleRefit(100));
+    ro.observe(stage);
+  }
   document.addEventListener('fullscreenchange', () => {
     const active = document.fullscreenElement === reader;
     $('fullscreen').textContent = active ? '⛶ Salir de pantalla completa' : '⛶ Ver en pantalla completa';
     $('fullscreen-toolbar').innerHTML = active ? '⛶ <span>Salir de pantalla completa</span>' : '⛶ <span>Ampliar vista</span>';
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(refitBook, 180);
+    scheduleRefit(220);
   });
   function applyZoom() { bookEl.style.transform = `scale(${zoom})`; $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
