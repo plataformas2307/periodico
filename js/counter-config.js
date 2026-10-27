@@ -1,3 +1,2 @@
-// Pega aquí la URL HTTPS de tu Cloudflare Worker cuando lo publiques.
-// Ejemplo: window.PERIODICO_COUNTER_ENDPOINT = 'https://contador-periodico.tu-cuenta.workers.dev';
-window.PERIODICO_COUNTER_ENDPOINT = '';
+// API del contador en Hostinger. No colocar credenciales de MySQL aquí.
+window.PERIODICO_COUNTER_ENDPOINT = 'https://peachpuff-baboon-866507.hostingersite.com/periodico-api/contador.php';

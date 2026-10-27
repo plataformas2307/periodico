@@ -211,8 +211,8 @@
     if (e.key === 'ArrowRight') { flip.flipNext(); e.preventDefault(); }
     if (e.key === 'ArrowLeft') { flip.flipPrev(); e.preventDefault(); }
   });
-  // El contador requiere una API persistente: GitHub Pages no puede almacenar visitas globales.
-  // Configura la URL del Worker de Cloudflare en counter-config.js.
+  // El contador usa PHP + MySQL en un servidor HTTPS externo a GitHub Pages.
+  // Configura la URL de contador.php en counter-config.js.
   async function loadVisitorCount() {
     const endpoint = window.PERIODICO_COUNTER_ENDPOINT;
     if (!endpoint || !/^https:\/\//.test(endpoint)) return;
