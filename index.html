@@ -5,16 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#121923">
   <meta name="description" content="Lector de periódico en formato flipbook">
-  <title>Mi periódico | Flipbook V2.3</title>
-  <link rel="stylesheet" href="css/styles.css?v=2.3">
+  <title>Mi periódico | Flipbook V2.4</title>
+  <link rel="stylesheet" href="css/styles.css?v=2.4">
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <div class="brand"><span class="brand-icon" aria-hidden="true">▤</span><div><strong>Mi periódico</strong><small>Edición digital · Flipbook</small></div></div>
       <div class="top-actions">
-        <label class="file-button" for="pdf-file" title="Abrir un PDF desde tu dispositivo">Abrir PDF</label>
-        <input id="pdf-file" type="file" accept="application/pdf,.pdf" hidden>
         <button id="fullscreen" class="file-button fullscreen-label" title="Ver en pantalla completa" aria-label="Ver en pantalla completa">⛶ Ver en pantalla completa</button>
       </div>
     </header>
@@ -34,6 +32,7 @@
         <button id="zoom-out" class="control" title="Reducir" aria-label="Reducir zoom">−</button>
         <span id="zoom-value" class="zoom-value">100%</span>
         <button id="zoom-in" class="control" title="Ampliar" aria-label="Ampliar zoom">+</button>
+        <button id="sound-toggle" class="control sound-toggle" title="Desactivar sonido de páginas" aria-label="Desactivar sonido de páginas" aria-pressed="true">♪</button>
         <button id="fullscreen-toolbar" class="control fullscreen-toolbar" title="Ver en pantalla completa" aria-label="Ver en pantalla completa">⛶ <span>Ampliar vista</span></button>
         <a id="download" class="control download" href="Periodico.pdf" download="Periodico.pdf" title="Descargar PDF">↓ <span>PDF</span></a>
       </nav>
@@ -43,6 +42,6 @@
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
-  <script src="js/app.js?v=2.3"></script>
+  <script src="js/app.js?v=2.4"></script>
 </body>
 </html>

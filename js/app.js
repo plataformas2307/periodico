@@ -4,7 +4,8 @@
   const $ = id => document.getElementById(id);
   const bookEl = $('book'), stage = $('stage'), status = $('status'), statusText = $('status-text');
   const controls = ['first','prev','next','last','zoom-out','zoom-in'];
-  let flip = null, pdf = null, zoom = 1, pdfUrl = 'Periodico.pdf', objectUrl = null;
+  let flip = null, pdf = null, zoom = 1, pdfUrl = 'Periodico.pdf';
+  let soundEnabled = true, audioContext = null, lastPageIndex = -1;
   let pageCount = 0, loadingToken = 0;
   let masterCanvases = [];
   let pageRatio = .72, resizeTimer = null;
@@ -84,8 +85,7 @@
       $('download').href = url; $('download').download = displayName;
     } catch(err) {
       console.error(err); clearBook();
-      const isDefault = url === 'Periodico.pdf';
-      showStatus('No se pudo abrir ' + displayName + ': ' + (err.message || 'Error desconocido') + '. Puedes probar «Abrir PDF» para comprobar el archivo local.', true);
+      showStatus('No se pudo abrir ' + displayName + ': ' + (err.message || 'Error desconocido'), true);
     }
   }
   // Dimensiones calculadas para que se vean las páginas completas, sin cortes.
@@ -122,9 +122,10 @@
       usePortrait:true, flippingTime:600, drawShadow:true, autoSize:false
     });
     flip.loadFromHTML(bookEl.querySelectorAll('.page'));
-    flip.on('flip', updateCounter);
+    flip.on('flip', () => { const idx = flip.getCurrentPageIndex(); if (lastPageIndex >= 0 && idx !== lastPageIndex) playPageSound(); lastPageIndex = idx; updateCounter(); });
     flip.on('changeOrientation', () => setTimeout(updateCounter,100));
     if (pageIndex > 0) flip.turnToPage(Math.min(pageIndex,pageCount-1));
+    lastPageIndex = Math.min(pageIndex,pageCount-1);
     updateCounter();
   }
   function refitBook() {
@@ -168,17 +169,43 @@
   }
   $('fullscreen').addEventListener('click', toggleFullscreen);
   $('fullscreen-toolbar').addEventListener('click', toggleFullscreen);
-  $('pdf-file').addEventListener('change', e => {
-    const file = e.target.files?.[0]; if (!file) return;
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    objectUrl = URL.createObjectURL(file); pdfUrl = objectUrl;
-    renderPdf(pdfUrl, file.name);
+  // Sonido original sintetizado con Web Audio: no requiere MP3 ni archivos externos.
+  // Se reproduce sólo después de una interacción del usuario y al cambiar de página.
+  function playPageSound() {
+    if (!soundEnabled) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      audioContext ||= new AudioCtx();
+      if (audioContext.state === 'suspended') audioContext.resume().catch(()=>{});
+      const duration = .24, sampleRate = audioContext.sampleRate;
+      const buffer = audioContext.createBuffer(1, Math.floor(duration * sampleRate), sampleRate);
+      const data = buffer.getChannelData(0);
+      let previous = 0;
+      for (let i=0; i<data.length; i++) {
+        const t=i/sampleRate, envelope=Math.pow(Math.sin(Math.PI*t/duration),1.4);
+        const noise=(Math.random()*2-1);
+        previous = previous*.72 + noise*.28;
+        data[i] = (noise*.42+previous*.58)*envelope;
+      }
+      const source=audioContext.createBufferSource(); source.buffer=buffer;
+      const filter=audioContext.createBiquadFilter(); filter.type='bandpass'; filter.frequency.value=950; filter.Q.value=.65;
+      const gain=audioContext.createGain(); gain.gain.value=.20;
+      source.connect(filter); filter.connect(gain); gain.connect(audioContext.destination);
+      source.start(); source.stop(audioContext.currentTime+duration);
+    } catch (e) { console.warn('Audio no disponible:',e); }
+  }
+  $('sound-toggle').addEventListener('click', () => {
+    soundEnabled=!soundEnabled;
+    $('sound-toggle').textContent=soundEnabled?'♪':'♪̸';
+    $('sound-toggle').setAttribute('aria-pressed',String(soundEnabled));
+    $('sound-toggle').setAttribute('aria-label',soundEnabled?'Desactivar sonido de páginas':'Activar sonido de páginas');
+    $('sound-toggle').title=soundEnabled?'Desactivar sonido de páginas':'Activar sonido de páginas';
   });
   document.addEventListener('keydown', e => {
     if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName) || !flip) return;
     if (e.key === 'ArrowRight') { flip.flipNext(); e.preventDefault(); }
     if (e.key === 'ArrowLeft') { flip.flipPrev(); e.preventDefault(); }
   });
-  window.addEventListener('beforeunload', () => { if (objectUrl) URL.revokeObjectURL(objectUrl); });
   renderPdf(pdfUrl, 'Periodico.pdf');
 })();

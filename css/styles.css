@@ -53,3 +53,36 @@ html,body{height:100%;overflow:hidden}
 .toolbar{bottom:5px;padding:4px 8px}
 .book{filter:drop-shadow(0 5px 10px #0008)}
 @media(max-width:650px){.reader,.reader:fullscreen{padding:2px 2px 58px}.toolbar{bottom:4px}}
+
+/* V2.4: controles legibles, sin tapar el periódico en móvil */
+.toolbar{gap:5px;max-width:calc(100vw - 12px);font-size:11px}
+.toolbar .control{font-size:14px;min-width:34px;min-height:34px;padding:5px 7px;white-space:nowrap}
+.toolbar .fullscreen-toolbar{font-size:11px;max-width:105px;line-height:1.1}
+.toolbar .fullscreen-toolbar span{font-size:11px}
+.toolbar .page-counter{font-size:11px;gap:4px;padding:4px 5px}
+.toolbar .page-counter input{font-size:12px;width:36px;padding:4px 2px}
+.toolbar .zoom-value{font-size:11px;min-width:34px}
+.toolbar .download{font-size:13px}
+.toolbar .download span{font-size:10px}
+.sound-toggle{font-size:17px!important}
+@media(max-width:650px){
+  /* Los botones de cabecera ya no cubren las páginas. */
+  .topbar .brand,.topbar .top-actions{display:none}
+  .reader,.reader:fullscreen{padding:2px 2px 55px}
+  .toolbar{width:max-content;max-width:calc(100vw - 8px);gap:2px;padding:4px;bottom:3px;overflow:visible;justify-content:center;flex-wrap:nowrap}
+  .toolbar .control{min-width:28px;min-height:32px;padding:4px 5px;font-size:14px}
+  .toolbar .page-counter{padding:3px 4px;font-size:10px;gap:2px}
+  .toolbar .page-counter input{width:30px;font-size:12px;padding:3px 1px}
+  .toolbar .zoom-value{min-width:29px;font-size:10px}
+  .toolbar .download span{display:none}
+  .toolbar .download{font-size:13px}
+  .toolbar .sound-toggle{font-size:15px!important}
+  .toolbar .fullscreen-toolbar{display:inline-flex;min-width:28px;font-size:14px}
+  .toolbar .fullscreen-toolbar span{display:none}
+}
+@media(max-width:380px){
+ .toolbar{gap:1px;padding:3px}
+ .toolbar .control{min-width:26px;padding:3px 4px}
+ .toolbar .page-counter input{width:26px}
+ .toolbar .zoom-value{min-width:27px}
+}

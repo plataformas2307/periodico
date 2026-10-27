@@ -1,11 +1,9 @@
-FLIPBOOK PERIODICO V2.1 - GITHUB PAGES
+Flipbook Periodico V2.4 para GitHub Pages
 
-Reemplaza index.html, css/styles.css y js/app.js en tu repositorio.
-Conserva Periodico.pdf junto a index.html.
-La vista inicial ajusta ambas páginas completas al espacio disponible.
-El botón Ver en pantalla completa permite leer con más espacio y se puede salir con Esc.
-La barra de navegación permanece disponible en pantalla completa.
-Para ver los cambios fuerza recarga con Ctrl+Shift+R.
+Reemplaza index.html, css/styles.css y js/app.js. Conserva Periodico.pdf en la raiz.
 
-El PDF no está incluido en el paquete.
-Las bibliotecas PDF.js y PageFlip requieren conexión a internet.
+Cambios: botones inferiores compactos, cabecera oculta en movil, sin Abrir PDF, sonido sintetizado de hoja con boton para activar/desactivar, acceso a pantalla completa en barra inferior movil.
+
+Dependencias PDF.js y StPageFlip por CDN; requiere conexion.
+
+Publica y actualiza con Ctrl+Shift+R. Prueba en telefono y escritorio.
