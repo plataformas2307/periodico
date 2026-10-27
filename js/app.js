@@ -33,7 +33,18 @@
       if (!window.pdfjsLib || !window.St || !window.St.PageFlip) {
         throw new Error('No se pudieron cargar las bibliotecas. Revisa tu conexión a internet.');
       }
-      const task = pdfjsLib.getDocument({url});
+      // Diagnóstico explícito: GitHub Pages puede devolver HTML 404 o un puntero Git LFS.
+      let source = url;
+      if (!url.startsWith('blob:')) {
+        const response = await fetch(url, {cache:'no-store'});
+        if (!response.ok) throw new Error(`HTTP ${response.status}: no se encontró el PDF en ${new URL(url, location.href).pathname}. Revisa mayúsculas, ruta y publicación de GitHub Pages.`);
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const header = new TextDecoder().decode(bytes.subarray(0, Math.min(bytes.length, 180)));
+        if (header.startsWith('version https://git-lfs.github.com/spec/v1')) throw new Error('GitHub está sirviendo un puntero Git LFS, no el PDF real. Sube el PDF directamente al repositorio sin LFS.');
+        if (!header.startsWith('%PDF-')) throw new Error(`El servidor no entregó un PDF válido (${response.headers.get('content-type') || 'tipo desconocido'}). Comprueba que el archivo no sea una página HTML o un enlace de Git LFS.`);
+        source = {data:bytes};
+      }
+      const task = pdfjsLib.getDocument(source);
       pdf = await task.promise;
       if (token !== loadingToken) return;
       pageCount = pdf.numPages;
@@ -77,9 +88,7 @@
     } catch(err) {
       console.error(err); clearBook();
       const isDefault = url === 'Periodico.pdf';
-      showStatus(isDefault
-        ? 'No se pudo abrir Periodico.pdf. También puedes usar «Abrir PDF».'
-        : 'No se pudo leer el PDF: ' + (err.message || 'archivo inválido'), true);
+      showStatus('No se pudo abrir ' + displayName + ': ' + (err.message || 'Error desconocido') + '. Puedes probar «Abrir PDF» para comprobar el archivo local.', true);
     }
   }
   function applyZoom() { bookEl.style.transform = `scale(${zoom})`; $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
