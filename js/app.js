@@ -78,7 +78,7 @@
       console.error(err); clearBook();
       const isDefault = url === 'Periodico.pdf';
       showStatus(isDefault
-        ? 'No se pudo abrir Periodico.pdf. Coloca el archivo junto a index.html y abre el sitio mediante un servidor web (http:// o https://). También puedes usar «Abrir PDF».'
+        ? 'No se pudo abrir Periodico.pdf. También puedes usar «Abrir PDF».'
         : 'No se pudo leer el PDF: ' + (err.message || 'archivo inválido'), true);
     }
   }
