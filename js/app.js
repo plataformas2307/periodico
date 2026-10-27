@@ -6,6 +6,8 @@
   const controls = ['first','prev','next','last','zoom-out','zoom-in'];
   let flip = null, pdf = null, zoom = 1, pdfUrl = 'Periodico.pdf', objectUrl = null;
   let pageCount = 0, loadingToken = 0;
+  let pageRatio = .72, resizeTimer = null;
+  const reader = document.querySelector('.reader');
   const worker = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = worker;
   function showStatus(message, error = false) {
@@ -54,8 +56,7 @@
       const first = await pdf.getPage(1);
       const vp = first.getViewport({scale:1});
       const ratio = vp.width / vp.height;
-      const baseHeight = 850;
-      const baseWidth = Math.round(baseHeight * ratio);
+      pageRatio = ratio;
       // La proporción original del PDF se conserva en cada página.
       for (let n=1; n<=pageCount; n++) {
         if (token !== loadingToken) return;
@@ -74,15 +75,7 @@
         page.cleanup();
       }
       if (token !== loadingToken) return;
-      flip = new St.PageFlip(bookEl, {
-        width:baseWidth, height:baseHeight, size:'stretch', minWidth:150, maxWidth:baseWidth,
-        minHeight:210, maxHeight:baseHeight, maxShadowOpacity:.45,
-        showCover:false, mobileScrollSupport:false, usePortrait:true,
-        flippingTime:650, drawShadow:true, autoSize:true
-      });
-      flip.loadFromHTML(bookEl.querySelectorAll('.page'));
-      flip.on('flip', updateCounter);
-      flip.on('changeOrientation', () => setTimeout(updateCounter, 100));
+      initFlip(0);
       zoom = 1; applyZoom(); hideStatus(); setControls(true); updateCounter();
       $('download').href = url; $('download').download = displayName;
     } catch(err) {
@@ -91,6 +84,52 @@
       showStatus('No se pudo abrir ' + displayName + ': ' + (err.message || 'Error desconocido') + '. Puedes probar «Abrir PDF» para comprobar el archivo local.', true);
     }
   }
+  // Dimensiones calculadas para que se vean las páginas completas, sin cortes.
+  function fitDimensions() {
+    const w = Math.max(240, stage.clientWidth - 32);
+    const h = Math.max(260, stage.clientHeight - 28);
+    const single = window.innerWidth <= 650 || w < 650;
+    const pageWidth = Math.floor(Math.min(w / (single ? 1 : 2), h * pageRatio));
+    return { width: Math.max(120,pageWidth), height: Math.max(170,Math.floor(pageWidth/pageRatio)) };
+  }
+  function initFlip(pageIndex = 0) {
+    if (!pageCount || !bookEl.querySelector('.page')) return;
+    const pages = Array.from(bookEl.querySelectorAll('.page'));
+    if (flip) {
+      try { flip.destroy(); } catch(e) { console.warn(e); }
+      flip = null;
+      // La librería puede modificar el DOM al destruirse.
+      bookEl.replaceChildren(...pages);
+    }
+    const dims = fitDimensions();
+    flip = new St.PageFlip(bookEl, {
+      width:dims.width, height:dims.height, size:'fixed',
+      maxShadowOpacity:.45, showCover:false, mobileScrollSupport:false,
+      usePortrait:true, flippingTime:650, drawShadow:true, autoSize:true
+    });
+    flip.loadFromHTML(bookEl.querySelectorAll('.page'));
+    flip.on('flip', updateCounter);
+    flip.on('changeOrientation', () => setTimeout(updateCounter,100));
+    if (pageIndex > 0) flip.turnToPage(Math.min(pageIndex,pageCount-1));
+    updateCounter();
+  }
+  function refitBook() {
+    if (!flip || !pageCount) return;
+    const current = flip.getCurrentPageIndex();
+    initFlip(current);
+    applyZoom();
+  }
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(refitBook, 180);
+  });
+  document.addEventListener('fullscreenchange', () => {
+    const active = document.fullscreenElement === reader;
+    $('fullscreen').textContent = active ? '⛶ Salir de pantalla completa' : '⛶ Ver en pantalla completa';
+    $('fullscreen-toolbar').innerHTML = active ? '⛶ <span>Salir de pantalla completa</span>' : '⛶ <span>Ampliar vista</span>';
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(refitBook, 180);
+  });
   function applyZoom() { bookEl.style.transform = `scale(${zoom})`; $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
   $('prev').addEventListener('click', () => flip?.flipPrev());
@@ -103,10 +142,14 @@
   });
   $('zoom-in').addEventListener('click', () => { zoom = Math.min(1.6, +(zoom+.1).toFixed(2)); applyZoom(); });
   $('zoom-out').addEventListener('click', () => { zoom = Math.max(.7, +(zoom-.1).toFixed(2)); applyZoom(); });
-  $('fullscreen').addEventListener('click', async () => {
-    try { if (document.fullscreenElement) await document.exitFullscreen(); else await stage.requestFullscreen(); }
-    catch(e) { console.warn('Pantalla completa no disponible', e); }
-  });
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await reader.requestFullscreen();
+    } catch(e) { console.warn('Pantalla completa no disponible', e); }
+  }
+  $('fullscreen').addEventListener('click', toggleFullscreen);
+  $('fullscreen-toolbar').addEventListener('click', toggleFullscreen);
   $('pdf-file').addEventListener('change', e => {
     const file = e.target.files?.[0]; if (!file) return;
     if (objectUrl) URL.revokeObjectURL(objectUrl);

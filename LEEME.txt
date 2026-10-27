@@ -1,30 +1,11 @@
-PROYECTO FLIPBOOK - PERIODICO.PDF
-================================
+FLIPBOOK PERIODICO V2.1 - GITHUB PAGES
 
-ESTRUCTURA
-index.html
-css/styles.css
-js/app.js
-Periodico.pdf   <-- COLOCA AQUÍ TU ARCHIVO PDF
+Reemplaza index.html, css/styles.css y js/app.js en tu repositorio.
+Conserva Periodico.pdf junto a index.html.
+La vista inicial ajusta ambas páginas completas al espacio disponible.
+El botón Ver en pantalla completa permite leer con más espacio y se puede salir con Esc.
+La barra de navegación permanece disponible en pantalla completa.
+Para ver los cambios fuerza recarga con Ctrl+Shift+R.
 
-INSTALACIÓN EN HOSTINGER
-1. Descomprime el ZIP.
-2. Copia index.html, las carpetas css y js, y tu archivo Periodico.pdf
-   a una carpeta de public_html (por ejemplo public_html/periodico/).
-3. Abre https://tudominio.com/periodico/
-4. Usa flechas, arrastra las páginas, o selecciona «Abrir PDF».
-
-PRUEBA LOCAL
-Los navegadores pueden bloquear la lectura del PDF desde file://.
-Usa un servidor local, por ejemplo desde esta carpeta:
-  python -m http.server 8000
-Y abre http://localhost:8000/
-
-NOTAS
-- El PDF no se incluye: debes agregar el tuyo con el nombre exacto Periodico.pdf.
-- PDF.js y PageFlip se cargan desde CDN; se necesita conexión a internet.
-- En documentos extensos el navegador puede usar bastante memoria porque
-  las páginas se preparan como imágenes. Para PDFs muy grandes conviene
-  implementar carga progresiva.
-- Se recomienda que todas las páginas del PDF tengan el mismo tamaño.
-- No requiere PHP, base de datos ni compilación.
+El PDF no está incluido en el paquete.
+Las bibliotecas PDF.js y PageFlip requieren conexión a internet.

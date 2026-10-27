@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#121923">
   <meta name="description" content="Lector de periódico en formato flipbook">
   <title>Mi periódico | Flipbook</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=2.1">
 </head>
 <body>
   <div class="app">
@@ -15,7 +15,7 @@
       <div class="top-actions">
         <label class="file-button" for="pdf-file" title="Abrir un PDF desde tu dispositivo">Abrir PDF</label>
         <input id="pdf-file" type="file" accept="application/pdf,.pdf" hidden>
-        <button id="fullscreen" class="icon-button" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
+        <button id="fullscreen" class="file-button fullscreen-label" title="Ver en pantalla completa" aria-label="Ver en pantalla completa">⛶ Ver en pantalla completa</button>
       </div>
     </header>
     <main class="reader">
@@ -34,6 +34,7 @@
         <button id="zoom-out" class="control" title="Reducir" aria-label="Reducir zoom">−</button>
         <span id="zoom-value" class="zoom-value">100%</span>
         <button id="zoom-in" class="control" title="Ampliar" aria-label="Ampliar zoom">+</button>
+        <button id="fullscreen-toolbar" class="control fullscreen-toolbar" title="Ver en pantalla completa" aria-label="Ver en pantalla completa">⛶ <span>Ampliar vista</span></button>
         <a id="download" class="control download" href="Periodico.pdf" download="Periodico.pdf" title="Descargar PDF">↓ <span>PDF</span></a>
       </nav>
       <p class="hint" id="hint">En móvil se muestra una página a la vez. Puedes usar las flechas del teclado.</p>
@@ -42,6 +43,6 @@
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=2.1"></script>
 </body>
 </html>
