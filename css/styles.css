@@ -86,3 +86,5 @@ html,body{height:100%;overflow:hidden}
  .toolbar .page-counter input{width:26px}
  .toolbar .zoom-value{min-width:27px}
 }
+
+/* V2.5: en escritorio la doble página se fuerza desde PageFlip; móvil conserva una página. */

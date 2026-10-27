@@ -92,10 +92,11 @@
   function fitDimensions() {
     const w = Math.max(240, stage.clientWidth - 18);
     const h = Math.max(260, stage.clientHeight - 18);
-    const single = window.innerWidth <= 650 || w < 600;
+    const single = window.matchMedia('(max-width: 650px)').matches; // Sólo móvil: una página; escritorio: doble página
     const pageWidth = Math.floor(Math.min(w / (single ? 1 : 2), h * pageRatio));
     return { width: Math.max(120,pageWidth), height: Math.max(170,Math.floor(pageWidth/pageRatio)) };
   }
+  function singlePageMode() { return window.matchMedia('(max-width: 650px)').matches; }
   // Recrear el libro desde canvases maestros que NUNCA pertenecen al DOM de PageFlip.
   // Esto evita que destroy() borre o invalide las páginas al salir de pantalla completa.
   function initFlip(pageIndex = 0) {
@@ -119,7 +120,7 @@
     flip = new St.PageFlip(bookEl, {
       width:dims.width, height:dims.height, size:'fixed',
       maxShadowOpacity:.35, showCover:false, mobileScrollSupport:false,
-      usePortrait:true, flippingTime:600, drawShadow:true, autoSize:false
+      usePortrait:singlePageMode(), flippingTime:600, drawShadow:true, autoSize:false
     });
     flip.loadFromHTML(bookEl.querySelectorAll('.page'));
     flip.on('flip', () => { const idx = flip.getCurrentPageIndex(); if (lastPageIndex >= 0 && idx !== lastPageIndex) playPageSound(); lastPageIndex = idx; updateCounter(); });
