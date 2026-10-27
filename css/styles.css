@@ -88,3 +88,34 @@ html,body{height:100%;overflow:hidden}
 }
 
 /* V2.5: en escritorio la doble página se fuerza desde PageFlip; móvil conserva una página. */
+
+
+/* V2.7: navegación lateral móvil y contador discreto */
+.mobile-page-arrow { display:none; }
+.visitor-counter {
+ position:absolute; bottom:49px; left:50%; transform:translateX(-50%);
+ z-index:24; margin:0; padding:5px 12px; max-width:calc(100vw - 18px);
+ border:1px solid #3b4c60; border-radius:99px; background:#0b1522ed;
+ color:#e6eef8; font-size:12px; line-height:1.25; text-align:center;
+ white-space:nowrap; pointer-events:none;
+}
+.visitor-counter strong { color:#e3bc70; font-variant-numeric:tabular-nums; }
+.visitor-counter[hidden] { display:none; }
+@media(max-width:650px) {
+ .mobile-page-arrow {
+  display:grid; place-items:center; position:absolute; top:50%; transform:translateY(-50%);
+  z-index:22; width:37px; height:65px; padding:0;
+  background:#0b1522b8; color:#fff; border:1px solid #6c8199a6;
+  border-radius:10px; font-size:27px; font-weight:600; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent; backdrop-filter:blur(3px);
+ }
+ .mobile-page-arrow--prev {left:5px;}
+ .mobile-page-arrow--next {right:5px;}
+ .mobile-page-arrow:disabled {opacity:.18; pointer-events:none;}
+ .mobile-page-arrow:focus-visible {outline:3px solid #e3bc70;outline-offset:2px;}
+ .visitor-counter {bottom:49px; font-size:10px; padding:5px 8px;}
+}
+@media(max-width:380px) {
+ .mobile-page-arrow {width:30px;height:55px;font-size:22px;}
+ .visitor-counter {font-size:9px;}
+}

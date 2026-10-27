@@ -3,7 +3,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const bookEl = $('book'), stage = $('stage'), status = $('status'), statusText = $('status-text');
-  const controls = ['first','prev','next','last','zoom-out','zoom-in'];
+  const controls = ['first','prev','next','last','zoom-out','zoom-in','mobile-prev','mobile-next'];
   let flip = null, pdf = null, zoom = 1, pdfUrl = 'Periodico.pdf';
   let soundEnabled = true, audioContext = null, lastPageIndex = -1;
   let pageCount = 0, loadingToken = 0;
@@ -24,6 +24,7 @@
     $('total-pages').textContent = `/ ${pageCount}`;
     $('first').disabled = current <= 1; $('prev').disabled = current <= 1;
     $('next').disabled = current >= pageCount; $('last').disabled = current >= pageCount;
+    $('mobile-prev').disabled = current <= 1; $('mobile-next').disabled = current >= pageCount;
   }
   function clearBook() {
     if (flip) { try { flip.destroy(); } catch(e) { console.warn(e); } flip = null; }
@@ -154,6 +155,8 @@
   $('first').addEventListener('click', () => flip?.turnToPage(0));
   $('prev').addEventListener('click', () => flip?.flipPrev());
   $('next').addEventListener('click', () => flip?.flipNext());
+  $('mobile-prev').addEventListener('click', () => flip?.flipPrev());
+  $('mobile-next').addEventListener('click', () => flip?.flipNext());
   $('last').addEventListener('click', () => flip?.turnToPage(pageCount-1));
   $('page-input').addEventListener('change', e => {
     if (!flip) return;
@@ -208,5 +211,32 @@
     if (e.key === 'ArrowRight') { flip.flipNext(); e.preventDefault(); }
     if (e.key === 'ArrowLeft') { flip.flipPrev(); e.preventDefault(); }
   });
+  // El contador requiere una API persistente: GitHub Pages no puede almacenar visitas globales.
+  // Configura la URL del Worker de Cloudflare en counter-config.js.
+  async function loadVisitorCount() {
+    const endpoint = window.PERIODICO_COUNTER_ENDPOINT;
+    if (!endpoint || !/^https:\/\//.test(endpoint)) return;
+    try {
+      const storageKey = 'periodico_visitor_id_v1';
+      let visitorId;
+      try {
+        visitorId = localStorage.getItem(storageKey);
+        if (!visitorId) {
+          visitorId = crypto.randomUUID();
+          localStorage.setItem(storageKey, visitorId);
+        }
+      } catch (_) { visitorId = crypto.randomUUID(); }
+      const response = await fetch(endpoint, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({visitorId}), cache:'no-store'
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      if (!Number.isSafeInteger(result.count) || result.count < 1) throw new Error('Respuesta inválida');
+      $('visitor-number').textContent = new Intl.NumberFormat('es-MX').format(result.count);
+      $('visitor-counter').hidden = false;
+    } catch (error) { console.warn('No se pudo consultar el contador:', error); }
+  }
+  loadVisitorCount();
   renderPdf(pdfUrl, 'Periodico.pdf');
 })();

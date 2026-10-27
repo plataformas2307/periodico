@@ -1,0 +1,8 @@
+name = "contador-periodico"
+main = "worker.js"
+compatibility_date = "2026-10-27"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "periodico-visitas"
+database_id = "REEMPLAZA_CON_ID_DE_TU_BASE_D1"
