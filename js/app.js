@@ -191,10 +191,17 @@
     setTimeout(updateFullscreenScale, 200);
   });
   function applyZoom() { bookEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom * fullscreenScale})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
-  // V3.4: en móvil, ambas direcciones utilizan la MISMA transición de hoja,
-  // reflejada horizontalmente. Evita el reverso blanco y las dos páginas
-  // superpuestas que PageFlip dibuja durante flipPrev en modo portrait.
+  // V3.5: móvil con giro tridimensional de 180 grados y dos caras.
+  // Se muestra la página destino bajo la hoja; el frente es la página actual
+  // y el reverso es la siguiente/anterior. Ambas direcciones son especulares.
   let mobileTurning = false;
+  let mobileTurnGeneration = 0;
+  function clonePageCanvas(source) {
+    const canvas = document.createElement('canvas');
+    canvas.width = source.width; canvas.height = source.height;
+    canvas.getContext('2d', {alpha:false}).drawImage(source, 0, 0);
+    return canvas;
+  }
   async function turnOnePage(direction) {
     if (!flip || mobileTurning) return;
     if (!singlePageMode()) {
@@ -205,38 +212,49 @@
     const target = current + direction;
     if (target < 0 || target >= pageCount) return;
     mobileTurning = true;
-    // Se prepara la página siguiente antes de iniciar el movimiento.
-    try { await renderOnePage(target); } catch (e) { console.warn(e); }
-    if (!flip || !singlePageMode()) { mobileTurning = false; return; }
-    const source = masterCanvases[current];
-    const sheet = document.createElement('div');
-    sheet.className = 'mobile-turn-sheet';
-    sheet.setAttribute('aria-hidden', 'true');
-    sheet.style.width = bookPageWidth + 'px';
-    sheet.style.height = bookPageHeight + 'px';
-    const canvas = document.createElement('canvas');
-    canvas.width = source.width; canvas.height = source.height;
-    canvas.getContext('2d').drawImage(source, 0, 0);
-    sheet.appendChild(canvas);
-    stage.appendChild(sheet);
-    // turnToPage no activa la animación interna de PageFlip.
-    // La animación visual es propia y exactamente simétrica.
-    flip.turnToPage(target);
-    updateCounter();
-    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 650;
-    const angle = direction > 0 ? -88 : 88;
-    sheet.style.transformOrigin = direction > 0 ? 'left center' : 'right center';
+    const generation = ++mobileTurnGeneration;
+    const currentFlip = flip;
+    let sheet;
     try {
+      // La página de destino debe estar lista antes de comenzar el giro.
+      await Promise.all([renderOnePage(current), renderOnePage(target)]);
+      if (flip !== currentFlip || !singlePageMode() || generation !== mobileTurnGeneration) return;
+      const source = masterCanvases[current], destination = masterCanvases[target];
+      if (!source || !destination || source.width <= 2 || destination.width <= 2) {
+        currentFlip.turnToPage(target); updateCounter(); return;
+      }
+      sheet = document.createElement('div');
+      sheet.className = 'mobile-turn-sheet mobile-turn-3d';
+      sheet.setAttribute('aria-hidden', 'true');
+      sheet.style.width = bookPageWidth + 'px';
+      sheet.style.height = bookPageHeight + 'px';
+      sheet.style.transformOrigin = direction > 0 ? 'left center' : 'right center';
+      const front = document.createElement('div'); front.className = 'mobile-turn-face mobile-turn-front';
+      const back = document.createElement('div'); back.className = 'mobile-turn-face mobile-turn-back';
+      front.appendChild(clonePageCanvas(source));
+      back.appendChild(clonePageCanvas(destination));
+      sheet.append(front,back);
+      stage.appendChild(sheet);
+      // El destino se pinta detrás de la hoja giratoria sin reconstruir el visor.
+      currentFlip.turnToPage(target);
+      updateCounter();
+      const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900;
       if (duration) {
+        const sign = direction > 0 ? -1 : 1;
         const animation = sheet.animate([
-          {transform:'perspective(1200px) rotateY(0deg)',opacity:1,filter:'brightness(1)'},
-          {transform:`perspective(1200px) rotateY(${angle*.55}deg)`,opacity:1,filter:'brightness(.78)',offset:.55},
-          {transform:`perspective(1200px) rotateY(${angle}deg)`,opacity:0,filter:'brightness(.62)'}
-        ],{duration,easing:'cubic-bezier(.32,.02,.23,1)',fill:'forwards'});
+          {transform:'rotateY(0deg)',offset:0},
+          {transform:`rotateY(${sign*38}deg)`,offset:.28},
+          {transform:`rotateY(${sign*116}deg)`,offset:.68},
+          {transform:`rotateY(${sign*180}deg)`,offset:1}
+        ], {duration,easing:'cubic-bezier(.42,0,.22,1)',fill:'forwards'});
         await animation.finished;
       }
-    } catch (_) { /* una rotación de pantalla puede cancelar la animación */ }
-    finally { sheet.remove(); mobileTurning = false; }
+    } catch (error) {
+      console.warn('Animación móvil:', error);
+    } finally {
+      if (sheet) sheet.remove();
+      mobileTurning = false;
+    }
   }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
   $('prev').addEventListener('click', () => turnOnePage(-1));
