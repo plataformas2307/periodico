@@ -152,3 +152,6 @@ html,body{height:100%;overflow:hidden}
 .mobile-turn-front::after {content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.24),transparent 35%,rgba(255,255,255,.12) 70%,rgba(0,0,0,.08));}
 .mobile-turn-back { transform:rotateY(180deg) translateZ(1px); -webkit-transform:rotateY(180deg) translateZ(1px); }
 .mobile-turn-back::after {content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.12),transparent 50%,rgba(0,0,0,.2));}
+
+/* V3.6: sin superposición 3D artificial. */
+.mobile-turn-sheet {display:none !important;}

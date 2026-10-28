@@ -191,69 +191,20 @@
     setTimeout(updateFullscreenScale, 200);
   });
   function applyZoom() { bookEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom * fullscreenScale})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
-  // V3.5: móvil con giro tridimensional de 180 grados y dos caras.
-  // Se muestra la página destino bajo la hoja; el frente es la página actual
-  // y el reverso es la siguiente/anterior. Ambas direcciones son especulares.
-  let mobileTurning = false;
-  let mobileTurnGeneration = 0;
-  function clonePageCanvas(source) {
-    const canvas = document.createElement('canvas');
-    canvas.width = source.width; canvas.height = source.height;
-    canvas.getContext('2d', {alpha:false}).drawImage(source, 0, 0);
-    return canvas;
-  }
-  async function turnOnePage(direction) {
-    if (!flip || mobileTurning) return;
-    if (!singlePageMode()) {
-      if (direction > 0) flip.flipNext(); else flip.flipPrev();
-      return;
-    }
+  // V3.6: las flechas y el gesto táctil comparten el motor nativo.
+  let arrowTurning = false;
+  function turnOnePage(direction) {
+    if (!flip || arrowTurning) return;
     const current = flip.getCurrentPageIndex();
     const target = current + direction;
     if (target < 0 || target >= pageCount) return;
-    mobileTurning = true;
-    const generation = ++mobileTurnGeneration;
-    const currentFlip = flip;
-    let sheet;
+    arrowTurning = true;
+    ensureNearPages(target);
     try {
-      // La página de destino debe estar lista antes de comenzar el giro.
-      await Promise.all([renderOnePage(current), renderOnePage(target)]);
-      if (flip !== currentFlip || !singlePageMode() || generation !== mobileTurnGeneration) return;
-      const source = masterCanvases[current], destination = masterCanvases[target];
-      if (!source || !destination || source.width <= 2 || destination.width <= 2) {
-        currentFlip.turnToPage(target); updateCounter(); return;
-      }
-      sheet = document.createElement('div');
-      sheet.className = 'mobile-turn-sheet mobile-turn-3d';
-      sheet.setAttribute('aria-hidden', 'true');
-      sheet.style.width = bookPageWidth + 'px';
-      sheet.style.height = bookPageHeight + 'px';
-      sheet.style.transformOrigin = direction > 0 ? 'left center' : 'right center';
-      const front = document.createElement('div'); front.className = 'mobile-turn-face mobile-turn-front';
-      const back = document.createElement('div'); back.className = 'mobile-turn-face mobile-turn-back';
-      front.appendChild(clonePageCanvas(source));
-      back.appendChild(clonePageCanvas(destination));
-      sheet.append(front,back);
-      stage.appendChild(sheet);
-      // El destino se pinta detrás de la hoja giratoria sin reconstruir el visor.
-      currentFlip.turnToPage(target);
-      updateCounter();
-      const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900;
-      if (duration) {
-        const sign = direction > 0 ? -1 : 1;
-        const animation = sheet.animate([
-          {transform:'rotateY(0deg)',offset:0},
-          {transform:`rotateY(${sign*38}deg)`,offset:.28},
-          {transform:`rotateY(${sign*116}deg)`,offset:.68},
-          {transform:`rotateY(${sign*180}deg)`,offset:1}
-        ], {duration,easing:'cubic-bezier(.42,0,.22,1)',fill:'forwards'});
-        await animation.finished;
-      }
-    } catch (error) {
-      console.warn('Animación móvil:', error);
+      if (direction > 0) flip.flipNext('bottom');
+      else flip.flipPrev('bottom');
     } finally {
-      if (sheet) sheet.remove();
-      mobileTurning = false;
+      window.setTimeout(() => { arrowTurning = false; }, 900);
     }
   }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
