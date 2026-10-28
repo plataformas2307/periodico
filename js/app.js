@@ -157,36 +157,37 @@
     flip.loadFromHTML(bookEl.querySelectorAll('.page'));
     // Pintar DESPUÉS de que PageFlip termine de envolver las páginas.
     rendered.forEach(paintDisplay);
-    flip.on('flip', () => { const idx = flip.getCurrentPageIndex(); if (lastPageIndex >= 0 && idx !== lastPageIndex) playPageSound(); lastPageIndex = idx; updateCounter(); scheduleRefit(240); });
+    flip.on('flip', () => { const idx = flip.getCurrentPageIndex(); if (lastPageIndex >= 0 && idx !== lastPageIndex) playPageSound(); lastPageIndex = idx; updateCounter(); requestAnimationFrame(updateResponsiveScale); });
     flip.on('changeOrientation', () => setTimeout(updateCounter,100));
     if (pageIndex > 0) flip.turnToPage(Math.min(pageIndex,pageCount-1));
     lastPageIndex = Math.min(pageIndex,pageCount-1);
     updateCounter();
     updateResponsiveScale();
   }
-  // V3.9: ajustar PageFlip sin destruir el DOM que está mostrando el PDF.
-  // PageFlip dispone de updateFromHtml para adaptar las páginas ya existentes.
+  // V4.0: Nunca destruir PageFlip al cambiar el ancho/alto de PC.
+  // La geometría interna permanece estable y se adapta con escala CSS.
+  // Sólo se reconstruye al cruzar el umbral móvil/escritorio.
   let resizingBook = false;
   function refitBook() {
     if (!flip || !pageCount || resizingBook || pageTurnPending) return;
-    const dims=fitDimensions();
-    const key=`${dims.width}x${dims.height}:${singlePageMode()}`;
-    if (key===lastFitKey) return;
-    resizingBook=true;
-    const current=flip.getCurrentPageIndex();
-    try {
-      // La librería recalcula la geometría usando sus dimensiones internas.
-      // Cambiar de orientación exige crear un visor nuevo; para ajustes de tamaño
-      // se reconstruye sólo cuando el navegador terminó el resize.
-      initFlip(current);
-      rendered.forEach(paintDisplay);
-      updateCounter();
-    } catch(e) { console.error('Ajuste del libro:',e); }
-    finally { resizingBook=false; }
+    const portrait = singlePageMode();
+    if (portrait !== lastPortrait) {
+      resizingBook = true;
+      const current = flip.getCurrentPageIndex();
+      try { initFlip(current); rendered.forEach(paintDisplay); }
+      catch(e) { console.error('Cambio de orientación:', e); }
+      finally { resizingBook = false; }
+    } else {
+      updateResponsiveScale();
+    }
   }
   function updateResponsiveScale() {
-    // PageFlip administra el tamaño real. Sólo se aplica zoom solicitado.
-    responsiveScale=1;
+    if (!flip || !bookPageWidth || !bookPageHeight) return;
+    // Espacio real del escenario; conservar dimensiones internas del motor.
+    const availableW = Math.max(1, stage.clientWidth - 20);
+    const availableH = Math.max(1, stage.clientHeight - 20);
+    const spreadW = bookPageWidth * (singlePageMode() ? 1 : 2);
+    responsiveScale = Math.min(1, availableW / spreadW, availableH / bookPageHeight);
     updateCoverAlignment();
   }
   function updateCoverAlignment() {
@@ -221,10 +222,10 @@
     const active = document.fullscreenElement === reader;
     $('fullscreen').textContent = active ? '⛶ Salir de pantalla completa' : '⛶ Ver en pantalla completa';
     $('fullscreen-toolbar').innerHTML = active ? '⛶ <span>Salir de pantalla completa</span>' : '⛶ <span>Ampliar vista</span>';
-    requestAnimationFrame(() => requestAnimationFrame(updateFullscreenScale));
-    setTimeout(updateFullscreenScale, 200);
+    requestAnimationFrame(() => requestAnimationFrame(updateResponsiveScale));
+    setTimeout(updateResponsiveScale, 200);
   });
-  function applyZoom() { bookEl.style.transform = `translate(${panX+coverShift*responsiveScale}px, ${panY}px) scale(${zoom * fullscreenScale * responsiveScale})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
+  function applyZoom() { bookEl.style.transform = `translate(${panX+coverShift*responsiveScale}px, ${panY}px) scale(${zoom * responsiveScale})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
   // V3.7: un único giro nativo para flechas y gestos, precargando
   // las dos caras necesarias ANTES de iniciar la animación.
   async function turnOnePage(direction) {
@@ -239,9 +240,9 @@
         .filter(i=>i>=0 && i<pageCount).map(renderOnePage));
       if (flip!==thisFlip) return;
       if (direction>0) flip.flipNext('bottom');
-      else flip.flipPrev('bottom');
+      else flip.flipPrev('top');
       await new Promise(resolve=>setTimeout(resolve,880));
-    } finally { pageTurnPending=false; }
+    } finally { pageTurnPending=false; updateResponsiveScale(); }
   }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
   $('prev').addEventListener('click', () => turnOnePage(-1));

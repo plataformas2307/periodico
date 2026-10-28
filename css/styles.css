@@ -171,3 +171,10 @@ html,body{height:100%;overflow:hidden}
 .page .page-content > canvas{position:absolute;inset:0;backface-visibility:visible!important;-webkit-backface-visibility:visible!important}
 .page .page-back-canvas,.mobile-turn-sheet{display:none!important}
 .book{max-width:none!important;max-height:none!important;transition:none!important}
+
+/* V4.0: neutralizar estilos 3D heredados que distorsionaban la hoja anterior.
+   La geometría y sombras las administra StPageFlip, no los canvas. */
+.page .page-content { transform-style:flat!important; -webkit-transform-style:flat!important; }
+.page .page-content > canvas { backface-visibility:visible!important; -webkit-backface-visibility:visible!important; transform:none!important; -webkit-transform:none!important; }
+.page .page-back-canvas,.mobile-turn-sheet {display:none!important;}
+.book {transform-origin:center center!important; transition:none!important;}
