@@ -116,6 +116,13 @@
       target.width=source.width; target.height=source.height;
     }
     target.getContext('2d',{alpha:false}).drawImage(source,0,0);
+    // StPageFlip puede mostrar la cara posterior del elemento durante el giro.
+    // La misma imagen se usa en esa cara, en vez del fondo blanco por defecto.
+    const back=pageElements[index]?.querySelector('.page-back-canvas');
+    if (back) {
+      if(back.width!==source.width || back.height!==source.height){back.width=source.width;back.height=source.height;}
+      back.getContext('2d',{alpha:false}).drawImage(source,0,0);
+    }
   }
   function initFlip(pageIndex = 0) {
     if (!pageCount || !masterCanvases.length) return;
@@ -130,7 +137,9 @@
       const wrapper=document.createElement('div');wrapper.className='page';
       const content=document.createElement('div');content.className='page-content';
       const display=document.createElement('canvas');display.width=2;display.height=2;
-      content.appendChild(display);wrapper.appendChild(content);fragment.appendChild(wrapper);
+      content.appendChild(display);
+      const back=document.createElement('canvas');back.className='page-back-canvas';back.width=2;back.height=2;
+      content.appendChild(back);wrapper.appendChild(content);fragment.appendChild(wrapper);
       pageElements.push(wrapper);displayCanvases.push(display);
     });
     bookEl.appendChild(fragment);
@@ -146,37 +155,37 @@
     flip.loadFromHTML(bookEl.querySelectorAll('.page'));
     // Pintar DESPUÉS de que PageFlip termine de envolver las páginas.
     rendered.forEach(paintDisplay);
-    flip.on('flip', () => { const idx = flip.getCurrentPageIndex(); if (lastPageIndex >= 0 && idx !== lastPageIndex) playPageSound(); lastPageIndex = idx; updateCounter(); });
+    flip.on('flip', () => { const idx = flip.getCurrentPageIndex(); if (lastPageIndex >= 0 && idx !== lastPageIndex) playPageSound(); lastPageIndex = idx; updateCounter(); scheduleRefit(240); });
     flip.on('changeOrientation', () => setTimeout(updateCounter,100));
     if (pageIndex > 0) flip.turnToPage(Math.min(pageIndex,pageCount-1));
     lastPageIndex = Math.min(pageIndex,pageCount-1);
     updateCounter();
     updateResponsiveScale();
   }
-  // V3.7: no destruir PageFlip durante resize; sólo escalar el libro.
-  // Únicamente se reconstruye al cruzar el límite móvil/escritorio.
+  // V3.8: recalcular el tamaño real de PageFlip. Evita escalar con CSS
+  // el DOM que administra la librería, lo que hacía desaparecer páginas.
+  let resizingBook = false;
   function refitBook() {
-    if (!flip || !pageCount || !masterCanvases.length) return;
-    if (singlePageMode() !== lastPortrait) {
-      const current=flip.getCurrentPageIndex();
+    if (!flip || !pageCount || resizingBook || pageTurnPending) return;
+    const dims=fitDimensions();
+    const key=`${dims.width}x${dims.height}:${singlePageMode()}`;
+    if (key===lastFitKey) return;
+    resizingBook=true;
+    const current=flip.getCurrentPageIndex();
+    try {
       initFlip(current);
-    } else {
-      updateResponsiveScale();
-    }
+      // Recuperar todas las páginas rasterizadas, incluidas sus caras posteriores.
+      rendered.forEach(paintDisplay);
+    } catch(e) { console.error('Ajuste del libro:',e); }
+    finally { resizingBook=false; }
   }
   function updateResponsiveScale() {
-    if (!bookPageWidth || !bookPageHeight) return;
-    const availableWidth=Math.max(1,stage.clientWidth-18);
-    const availableHeight=Math.max(1,stage.clientHeight-18);
-    const width=bookPageWidth*(singlePageMode()?1:2);
-    responsiveScale=Math.min(1.6, availableWidth/width, availableHeight/bookPageHeight);
-    responsiveScale=Math.max(.15,responsiveScale);
+    // PageFlip administra el tamaño real. Sólo se aplica zoom solicitado.
+    responsiveScale=1;
     updateCoverAlignment();
   }
   function updateCoverAlignment() {
     if (!flip || !pageCount) return;
-    // La portada y la contraportada ocupan una sola hoja centrada.
-    // PageFlip conserva su estructura de pliego para el giro.
     const current=flip.getCurrentPageIndex();
     coverShift=(!singlePageMode() && (current===0 || current===pageCount-1))
       ? (current===0 ? -bookPageWidth/2 : bookPageWidth/2) : 0;
@@ -219,7 +228,7 @@
   async function turnOnePage(direction) {
     if (!flip || pageTurnPending) return;
     const current=flip.getCurrentPageIndex();
-    const target=current+direction;
+    const target=current+(singlePageMode()?direction:direction*2);
     if (target<0 || target>=pageCount) return;
     pageTurnPending=true;
     const thisFlip=flip;
@@ -227,8 +236,8 @@
       await Promise.all([current-1,current,current+1,target-1,target,target+1]
         .filter(i=>i>=0 && i<pageCount).map(renderOnePage));
       if (flip!==thisFlip) return;
-      if (direction>0) flip.flipNext('bottom');
-      else flip.flipPrev('bottom');
+      if (direction>0) flip.flipNext('top');
+      else flip.flipPrev('top');
       await new Promise(resolve=>setTimeout(resolve,900));
     } finally { pageTurnPending=false; }
   }
