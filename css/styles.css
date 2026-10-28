@@ -186,3 +186,7 @@ html,body{height:100%;overflow:hidden}
 .page .page-content > canvas {visibility:hidden!important;}
 /* No transformar ni limitar el elemento administrado por PageFlip. */
 .book {max-width:none!important;max-height:none!important;transition:none!important;}
+
+/* V4.2: PageFlip renderiza imágenes en su propio canvas; no hay nodos .page. */
+.book{transform-origin:center center!important;transition:none!important;filter:drop-shadow(0 6px 12px #0008)}
+.thumbnails-grid .thumb img{display:block;width:100%;height:auto;object-fit:contain;max-height:210px}
