@@ -116,12 +116,15 @@
       target.width=source.width; target.height=source.height;
     }
     target.getContext('2d',{alpha:false}).drawImage(source,0,0);
-    // StPageFlip puede mostrar la cara posterior del elemento durante el giro.
-    // La misma imagen se usa en esa cara, en vez del fondo blanco por defecto.
-    const back=pageElements[index]?.querySelector('.page-back-canvas');
-    if (back) {
-      if(back.width!==source.width || back.height!==source.height){back.width=source.width;back.height=source.height;}
-      back.getContext('2d',{alpha:false}).drawImage(source,0,0);
+    // Mantener una imagen real en la hoja incluso cuando el motor voltea su reverso.
+    const page = pageElements[index];
+    if (page) {
+      const url = source.toDataURL('image/jpeg', .90);
+      page.style.backgroundImage = `url(\"${url}\")`;
+      page.style.backgroundSize = '100% 100%';
+      page.style.backgroundColor = '#fff';
+      const content = page.querySelector('.page-content');
+      if (content) { content.style.backgroundImage = `url(\"${url}\")`; content.style.backgroundSize = '100% 100%'; }
     }
   }
   function initFlip(pageIndex = 0) {
@@ -138,8 +141,7 @@
       const content=document.createElement('div');content.className='page-content';
       const display=document.createElement('canvas');display.width=2;display.height=2;
       content.appendChild(display);
-      const back=document.createElement('canvas');back.className='page-back-canvas';back.width=2;back.height=2;
-      content.appendChild(back);wrapper.appendChild(content);fragment.appendChild(wrapper);
+      wrapper.appendChild(content);fragment.appendChild(wrapper);
       pageElements.push(wrapper);displayCanvases.push(display);
     });
     bookEl.appendChild(fragment);
@@ -162,8 +164,8 @@
     updateCounter();
     updateResponsiveScale();
   }
-  // V3.8: recalcular el tamaño real de PageFlip. Evita escalar con CSS
-  // el DOM que administra la librería, lo que hacía desaparecer páginas.
+  // V3.9: ajustar PageFlip sin destruir el DOM que está mostrando el PDF.
+  // PageFlip dispone de updateFromHtml para adaptar las páginas ya existentes.
   let resizingBook = false;
   function refitBook() {
     if (!flip || !pageCount || resizingBook || pageTurnPending) return;
@@ -173,9 +175,12 @@
     resizingBook=true;
     const current=flip.getCurrentPageIndex();
     try {
+      // La librería recalcula la geometría usando sus dimensiones internas.
+      // Cambiar de orientación exige crear un visor nuevo; para ajustes de tamaño
+      // se reconstruye sólo cuando el navegador terminó el resize.
       initFlip(current);
-      // Recuperar todas las páginas rasterizadas, incluidas sus caras posteriores.
       rendered.forEach(paintDisplay);
+      updateCounter();
     } catch(e) { console.error('Ajuste del libro:',e); }
     finally { resizingBook=false; }
   }
@@ -191,15 +196,12 @@
       ? (current===0 ? -bookPageWidth/2 : bookPageWidth/2) : 0;
     applyZoom();
   }
-  function scheduleRefit(delay=160) {
+  function scheduleRefit(delay=350) {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(refitBook)), delay);
   }
   window.addEventListener('resize', () => scheduleRefit());
-  if (window.ResizeObserver) {
-    const ro = new ResizeObserver(() => scheduleRefit(100));
-    ro.observe(stage);
-  }
+  window.addEventListener('orientationchange', () => scheduleRefit(400));
   function updateFullscreenScale() {
     if (!document.fullscreenElement || !bookPageWidth || !bookPageHeight) {
       fullscreenScale = 1;
@@ -236,9 +238,9 @@
       await Promise.all([current-1,current,current+1,target-1,target,target+1]
         .filter(i=>i>=0 && i<pageCount).map(renderOnePage));
       if (flip!==thisFlip) return;
-      if (direction>0) flip.flipNext('top');
-      else flip.flipPrev('top');
-      await new Promise(resolve=>setTimeout(resolve,900));
+      if (direction>0) flip.flipNext('bottom');
+      else flip.flipPrev('bottom');
+      await new Promise(resolve=>setTimeout(resolve,880));
     } finally { pageTurnPending=false; }
   }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
