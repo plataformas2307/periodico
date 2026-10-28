@@ -129,3 +129,8 @@ html,body{height:100%;overflow:hidden}
 
 /* V3.3: pantalla completa sólo en escritorio. Ocultar ambas entradas en móvil. */
 @media(max-width:650px){#fullscreen,#fullscreen-toolbar{display:none!important}}
+
+/* V3.4: transición de una sola hoja simétrica en iPhone y Android. */
+.mobile-turn-sheet{position:absolute;left:50%;top:50%;translate:-50% -50%;z-index:12;pointer-events:none;background:#fff;box-shadow:0 7px 20px #0005;backface-visibility:hidden;will-change:transform,opacity;overflow:hidden}
+.mobile-turn-sheet canvas{width:100%;height:100%;display:block}
+@media(min-width:651px){.mobile-turn-sheet{display:none}}

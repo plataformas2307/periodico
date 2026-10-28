@@ -191,11 +191,58 @@
     setTimeout(updateFullscreenScale, 200);
   });
   function applyZoom() { bookEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom * fullscreenScale})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
+  // V3.4: en móvil, ambas direcciones utilizan la MISMA transición de hoja,
+  // reflejada horizontalmente. Evita el reverso blanco y las dos páginas
+  // superpuestas que PageFlip dibuja durante flipPrev en modo portrait.
+  let mobileTurning = false;
+  async function turnOnePage(direction) {
+    if (!flip || mobileTurning) return;
+    if (!singlePageMode()) {
+      if (direction > 0) flip.flipNext(); else flip.flipPrev();
+      return;
+    }
+    const current = flip.getCurrentPageIndex();
+    const target = current + direction;
+    if (target < 0 || target >= pageCount) return;
+    mobileTurning = true;
+    // Se prepara la página siguiente antes de iniciar el movimiento.
+    try { await renderOnePage(target); } catch (e) { console.warn(e); }
+    if (!flip || !singlePageMode()) { mobileTurning = false; return; }
+    const source = masterCanvases[current];
+    const sheet = document.createElement('div');
+    sheet.className = 'mobile-turn-sheet';
+    sheet.setAttribute('aria-hidden', 'true');
+    sheet.style.width = bookPageWidth + 'px';
+    sheet.style.height = bookPageHeight + 'px';
+    const canvas = document.createElement('canvas');
+    canvas.width = source.width; canvas.height = source.height;
+    canvas.getContext('2d').drawImage(source, 0, 0);
+    sheet.appendChild(canvas);
+    stage.appendChild(sheet);
+    // turnToPage no activa la animación interna de PageFlip.
+    // La animación visual es propia y exactamente simétrica.
+    flip.turnToPage(target);
+    updateCounter();
+    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 650;
+    const angle = direction > 0 ? -88 : 88;
+    sheet.style.transformOrigin = direction > 0 ? 'left center' : 'right center';
+    try {
+      if (duration) {
+        const animation = sheet.animate([
+          {transform:'perspective(1200px) rotateY(0deg)',opacity:1,filter:'brightness(1)'},
+          {transform:`perspective(1200px) rotateY(${angle*.55}deg)`,opacity:1,filter:'brightness(.78)',offset:.55},
+          {transform:`perspective(1200px) rotateY(${angle}deg)`,opacity:0,filter:'brightness(.62)'}
+        ],{duration,easing:'cubic-bezier(.32,.02,.23,1)',fill:'forwards'});
+        await animation.finished;
+      }
+    } catch (_) { /* una rotación de pantalla puede cancelar la animación */ }
+    finally { sheet.remove(); mobileTurning = false; }
+  }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
-  $('prev').addEventListener('click', () => flip?.flipPrev());
-  $('next').addEventListener('click', () => flip?.flipNext());
-  $('mobile-prev').addEventListener('click', () => flip?.flipPrev());
-  $('mobile-next').addEventListener('click', () => flip?.flipNext());
+  $('prev').addEventListener('click', () => turnOnePage(-1));
+  $('next').addEventListener('click', () => turnOnePage(1));
+  $('mobile-prev').addEventListener('click', () => turnOnePage(-1));
+  $('mobile-next').addEventListener('click', () => turnOnePage(1));
   $('last').addEventListener('click', () => flip?.turnToPage(pageCount-1));
   $('page-input').addEventListener('change', e => {
     if (!flip) return;
@@ -247,8 +294,8 @@
   });
   document.addEventListener('keydown', e => {
     if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName) || !flip) return;
-    if (e.key === 'ArrowRight') { flip.flipNext(); e.preventDefault(); }
-    if (e.key === 'ArrowLeft') { flip.flipPrev(); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { turnOnePage(1); e.preventDefault(); }
+    if (e.key === 'ArrowLeft') { turnOnePage(-1); e.preventDefault(); }
   });
   // Render progresivo: un canvas por página, con cola de trabajos y caché limitada.
   async function renderOnePage(index) {
