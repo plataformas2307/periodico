@@ -1,4 +1,4 @@
-/* V4.3: escalado sin destruir PageFlip y navegación inversa corregida. Bibliotecas externas: PDF.js 3.11.174 y StPageFlip 2.0.7 */
+/* V4.5: actualización de dimensiones sin reconstruir PageFlip. Bibliotecas externas: PDF.js 3.11.174 y StPageFlip 2.0.7 */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -164,9 +164,8 @@
     updateCounter();
     updateResponsiveScale();
   }
-  // V4.4: volver a calcular el tamaño real del motor después de que
-  // el contenedor se estabilice. Los lienzos maestros están fuera del DOM.
-  // Nunca reutilizar páginas que PageFlip haya envuelto o destruido.
+  // V4.5: no destruir el motor durante cambios de tamaño.
+  // PageFlip.update recalcula la geometría conservando sus páginas y canvases.
   let resizingBook = false;
   function refitBook() {
     if (!flip || !pageCount || resizingBook || pageTurnPending) {
@@ -174,15 +173,24 @@
       return;
     }
     const dims=fitDimensions();
-    const key=`${dims.width}x${dims.height}:${singlePageMode()}`;
+    const portrait=singlePageMode();
+    const key=`${dims.width}x${dims.height}:${portrait}`;
     if (key===lastFitKey) return;
     resizingBook=true;
-    const current=flip.getCurrentPageIndex();
     try {
-      // Reconstruir únicamente las hojas del visor, no el PDF ni sus renders.
-      initFlip(Math.min(current,pageCount-1));
-      rendered.forEach(paintDisplay);
-      ensureNearPages(current);
+      if (portrait !== lastPortrait) {
+        // El modo portada cambia únicamente al cruzar el breakpoint.
+        // En este caso es necesario regenerar hojas HTML una sola vez.
+        const current=flip.getCurrentPageIndex();
+        initFlip(current);
+      } else {
+        flip.update({width:dims.width,height:dims.height,size:'fixed',
+          showCover:!portrait,usePortrait:portrait,autoSize:false});
+        bookPageWidth=dims.width;
+        bookPageHeight=dims.height;
+        lastFitKey=key;
+        updateCoverAlignment();
+      }
     } catch(error) {
       console.error('Error al adaptar el visor:',error);
       showStatus('No se pudo ajustar la vista. Actualiza la página.',true);
