@@ -126,3 +126,6 @@ html,body{height:100%;overflow:hidden}
 .thumbnails-grid{padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(83px,1fr));gap:12px;overflow:auto;overscroll-behavior:contain}.thumb{background:#24354a;color:white;border:2px solid transparent;border-radius:8px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px}.thumb.active{border-color:#e3bc70}.thumb canvas{display:block;max-width:100%;height:110px;object-fit:contain;background:white}.thumb-placeholder{height:110px;width:75px;background:#e9eef4;display:grid;place-items:center;color:#42546c}
 .book{touch-action:pan-y}.reader.zoomed .book{touch-action:none}.reader.zoomed .stage{touch-action:none}
 @media(max-width:650px){.thumbnails-panel{left:6px;right:6px;bottom:54px;width:auto;max-height:65dvh}.thumbnails-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* V3.3: pantalla completa sólo en escritorio. Ocultar ambas entradas en móvil. */
+@media(max-width:650px){#fullscreen,#fullscreen-toolbar{display:none!important}}

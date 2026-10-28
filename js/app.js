@@ -12,6 +12,10 @@
   let panX=0, panY=0, pinchStart=null;
   const progressKey = 'periodico_last_page_v3';
   let pageRatio = .72, resizeTimer = null, lastFitKey = "";
+  let fullscreenTransitionUntil = 0, fullscreenScale = 1, bookPageWidth = 0, bookPageHeight = 0;
+  // Base pública de 500: 4 visitas ya registradas equivalen a 500.
+  // MySQL conserva su conteo real y la deduplicación existente.
+  const VISITOR_DISPLAY_OFFSET = 496;
   const reader = document.querySelector('.reader');
   const worker = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = worker;
@@ -127,6 +131,7 @@
     });
     bookEl.appendChild(fragment);
     const dims = fitDimensions();
+    bookPageWidth = dims.width; bookPageHeight = dims.height;
     lastFitKey=`${dims.width}x${dims.height}:${singlePageMode()}`;
     flip = new St.PageFlip(bookEl, {
       width:dims.width, height:dims.height, size:'fixed',
@@ -144,6 +149,8 @@
   }
   function refitBook() {
     if (!flip || !pageCount || !masterCanvases.length) return;
+    // Pantalla completa sólo modifica la presentación: NO destruir PageFlip.
+    if (document.fullscreenElement || Date.now() < fullscreenTransitionUntil) return;
     const dims=fitDimensions();
     const key=`${dims.width}x${dims.height}:${singlePageMode()}`;
     if (key===lastFitKey) return;
@@ -161,13 +168,29 @@
     const ro = new ResizeObserver(() => scheduleRefit(100));
     ro.observe(stage);
   }
+  function updateFullscreenScale() {
+    if (!document.fullscreenElement || !bookPageWidth || !bookPageHeight) {
+      fullscreenScale = 1;
+    } else {
+      const spreadWidth = bookPageWidth * (singlePageMode() ? 1 : 2);
+      fullscreenScale = Math.max(1, Math.min(1.8,
+        (stage.clientWidth - 28) / spreadWidth,
+        (stage.clientHeight - 28) / bookPageHeight));
+    }
+    applyZoom();
+  }
   document.addEventListener('fullscreenchange', () => {
+    // El bug anterior ocurría porque resize/ResizeObserver destruían
+    // y reconstruían PageFlip mientras el navegador cambiaba el layout.
+    fullscreenTransitionUntil = Date.now() + 850;
+    clearTimeout(resizeTimer);
     const active = document.fullscreenElement === reader;
     $('fullscreen').textContent = active ? '⛶ Salir de pantalla completa' : '⛶ Ver en pantalla completa';
     $('fullscreen-toolbar').innerHTML = active ? '⛶ <span>Salir de pantalla completa</span>' : '⛶ <span>Ampliar vista</span>';
-    scheduleRefit(220);
+    requestAnimationFrame(() => requestAnimationFrame(updateFullscreenScale));
+    setTimeout(updateFullscreenScale, 200);
   });
-  function applyZoom() { bookEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
+  function applyZoom() { bookEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom * fullscreenScale})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
   $('prev').addEventListener('click', () => flip?.flipPrev());
   $('next').addEventListener('click', () => flip?.flipNext());
@@ -320,7 +343,7 @@
       if (!response.ok) throw new Error('HTTP ' + response.status);
       const result = await response.json();
       if (!Number.isSafeInteger(result.count) || result.count < 1) throw new Error('Respuesta inválida');
-      $('visitor-number').textContent = new Intl.NumberFormat('es-MX').format(result.count);
+      $('visitor-number').textContent = new Intl.NumberFormat('es-MX').format(Math.max(500, result.count + VISITOR_DISPLAY_OFFSET));
       $('visitor-counter').hidden = false;
     } catch (error) { console.warn('No se pudo consultar el contador:', error); }
   }
