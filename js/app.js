@@ -8,10 +8,10 @@
   let soundEnabled = true, audioContext = null, lastPageIndex = -1;
   let pageCount = 0, loadingToken = 0;
   let masterCanvases = [];
-  let pageElements = [], renderJobs = new Map(), rendered = new Set(), renderGeneration = 0;
+  let pageElements = [], displayCanvases = [], renderJobs = new Map(), rendered = new Set(), renderGeneration = 0;
   let panX=0, panY=0, immersive=false, revealTimer=null, pinchStart=null;
   const progressKey = 'periodico_last_page_v3';
-  let pageRatio = .72, resizeTimer = null;
+  let pageRatio = .72, resizeTimer = null, lastFitKey = "";
   const reader = document.querySelector('.reader');
   const worker = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = worker;
@@ -34,7 +34,7 @@
   function clearBook() {
     if (flip) { try { flip.destroy(); } catch(e) { console.warn(e); } flip = null; }
     bookEl.innerHTML = '';
-    masterCanvases = []; pageElements = []; rendered.clear(); renderJobs.clear(); renderGeneration++;
+    masterCanvases = []; pageElements = []; displayCanvases = []; rendered.clear(); renderJobs.clear(); renderGeneration++;
   }
   async function renderPdf(url, displayName) {
     const token = ++loadingToken;
@@ -66,14 +66,12 @@
       const first = await pdf.getPage(1);
       const vp = first.getViewport({scale:1});
       pageRatio = vp.width / vp.height;
-      masterCanvases = []; pageElements = []; rendered.clear();
+      masterCanvases = []; pageElements = []; displayCanvases = []; rendered.clear();
       bookEl.replaceChildren();
       for (let n=1; n<=pageCount; n++) {
-        const wrapper = document.createElement('div'); wrapper.className='page';
-        const content = document.createElement('div'); content.className='page-content';
-        const canvas=document.createElement('canvas'); canvas.width=2;canvas.height=2;
-        content.appendChild(canvas); wrapper.appendChild(content); bookEl.appendChild(wrapper);
-        pageElements.push(wrapper); masterCanvases.push(canvas);
+        // El lienzo maestro vive fuera del DOM y no puede ser destruido por PageFlip.
+        const canvas=document.createElement('canvas'); canvas.width=2; canvas.height=2;
+        masterCanvases.push(canvas);
       }
       if (token !== loadingToken) return;
       let saved=0;
@@ -100,31 +98,44 @@
     return { width: Math.max(120,pageWidth), height: Math.max(170,Math.floor(pageWidth/pageRatio)) };
   }
   function singlePageMode() { return window.matchMedia('(max-width: 650px)').matches; }
-  // Recrear el libro desde canvases maestros que NUNCA pertenecen al DOM de PageFlip.
-  // Esto evita que destroy() borre o invalide las páginas al salir de pantalla completa.
+  // Los lienzos maestros nunca se entregan a PageFlip: la librería puede
+  // desmontar y destruir su DOM al cambiar la orientación o el tamaño.
+  function paintDisplay(index) {
+    if (!rendered.has(index)) return;
+    const target=displayCanvases[index], source=masterCanvases[index];
+    if (!target || !source || !target.isConnected) return;
+    if (target.width!==source.width || target.height!==source.height) {
+      target.width=source.width; target.height=source.height;
+    }
+    target.getContext('2d',{alpha:false}).drawImage(source,0,0);
+  }
   function initFlip(pageIndex = 0) {
-    if (!pageCount || !pageElements.length) return;
+    if (!pageCount || !masterCanvases.length) return;
     if (flip) {
       try { flip.destroy(); } catch(e) { console.warn('Reinicio del visor:', e); }
       flip = null;
     }
     bookEl.replaceChildren();
-    // Canvas renderizados sobreviven a PageFlip.destroy() porque están fuera del DOM interno.
     const fragment=document.createDocumentFragment();
-    pageElements=[];
-    for (const original of masterCanvases) {
+    pageElements=[]; displayCanvases=[];
+    masterCanvases.forEach((source,index) => {
       const wrapper=document.createElement('div');wrapper.className='page';
       const content=document.createElement('div');content.className='page-content';
-      content.appendChild(original);wrapper.appendChild(content);fragment.appendChild(wrapper);pageElements.push(wrapper);
-    }
+      const display=document.createElement('canvas');display.width=2;display.height=2;
+      content.appendChild(display);wrapper.appendChild(content);fragment.appendChild(wrapper);
+      pageElements.push(wrapper);displayCanvases.push(display);
+    });
     bookEl.appendChild(fragment);
     const dims = fitDimensions();
+    lastFitKey=`${dims.width}x${dims.height}:${singlePageMode()}`;
     flip = new St.PageFlip(bookEl, {
       width:dims.width, height:dims.height, size:'fixed',
       maxShadowOpacity:.55, showCover:false, mobileScrollSupport:false,
       usePortrait:singlePageMode(), flippingTime:850, drawShadow:true, autoSize:false
     });
     flip.loadFromHTML(bookEl.querySelectorAll('.page'));
+    // Pintar DESPUÉS de que PageFlip termine de envolver las páginas.
+    rendered.forEach(paintDisplay);
     flip.on('flip', () => { const idx = flip.getCurrentPageIndex(); if (lastPageIndex >= 0 && idx !== lastPageIndex) playPageSound(); lastPageIndex = idx; updateCounter(); });
     flip.on('changeOrientation', () => setTimeout(updateCounter,100));
     if (pageIndex > 0) flip.turnToPage(Math.min(pageIndex,pageCount-1));
@@ -133,6 +144,10 @@
   }
   function refitBook() {
     if (!flip || !pageCount || !masterCanvases.length) return;
+    const dims=fitDimensions();
+    const key=`${dims.width}x${dims.height}:${singlePageMode()}`;
+    if (key===lastFitKey) return;
+    lastFitKey=key;
     const current = flip.getCurrentPageIndex();
     initFlip(current);
     applyZoom();
@@ -224,7 +239,7 @@
       const canvas=masterCanvases[index];
       canvas.width=Math.ceil(v.width);canvas.height=Math.ceil(v.height);
       await page.render({canvasContext:canvas.getContext('2d',{alpha:false}),viewport:v}).promise;
-      if(generation===renderGeneration){rendered.add(index);page.cleanup();}
+      if(generation===renderGeneration){rendered.add(index);paintDisplay(index);page.cleanup();}
     })().catch(e=>console.warn('Página '+(index+1),e)).finally(()=>renderJobs.delete(index));
     renderJobs.set(index,job);return job;
   }
