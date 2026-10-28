@@ -1,4 +1,4 @@
-/* Flipbook PDF. Bibliotecas externas: PDF.js 3.11.174 y StPageFlip 2.0.7 */
+/* V4.1: estabilización de redimensionamiento y giro simétrico. Bibliotecas externas: PDF.js 3.11.174 y StPageFlip 2.0.7 */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -164,30 +164,46 @@
     updateCounter();
     updateResponsiveScale();
   }
-  // V4.0: Nunca destruir PageFlip al cambiar el ancho/alto de PC.
-  // La geometría interna permanece estable y se adapta con escala CSS.
-  // Sólo se reconstruye al cruzar el umbral móvil/escritorio.
+  // V4.1: actualizar las dimensiones internas de PageFlip, no aplicar una
+  // escala CSS sobre el contenedor que administra la biblioteca.
+  // update() preserva la instancia, la posición y los nodos de las páginas.
   let resizingBook = false;
   function refitBook() {
     if (!flip || !pageCount || resizingBook || pageTurnPending) return;
     const portrait = singlePageMode();
-    if (portrait !== lastPortrait) {
-      resizingBook = true;
-      const current = flip.getCurrentPageIndex();
-      try { initFlip(current); rendered.forEach(paintDisplay); }
-      catch(e) { console.error('Cambio de orientación:', e); }
-      finally { resizingBook = false; }
-    } else {
-      updateResponsiveScale();
-    }
+    const dims = fitDimensions();
+    const key = `${dims.width}x${dims.height}:${portrait}`;
+    if (key === lastFitKey) return;
+    resizingBook = true;
+    const current = flip.getCurrentPageIndex();
+    try {
+      if (portrait !== lastPortrait) {
+        // PageFlip no permite cambiar showCover de forma fiable con update.
+        // Sólo este cambio de modo exige recrear la instancia.
+        initFlip(current);
+      } else {
+        bookPageWidth = dims.width;
+        bookPageHeight = dims.height;
+        flip.update({width:dims.width,height:dims.height,size:'fixed'});
+        lastFitKey = key;
+        // Reaplicar las imágenes después de que PageFlip ajuste sus capas.
+        requestAnimationFrame(() => {
+          rendered.forEach(paintDisplay);
+          updateResponsiveScale();
+          updateCounter();
+        });
+      }
+    } catch (err) {
+      console.error('Error al adaptar el visor:', err);
+      // Recuperación controlada: recrear el libro con los maestros ya renderizados.
+      try { initFlip(current); rendered.forEach(paintDisplay); } catch(e) { console.error(e); }
+    } finally { resizingBook = false; }
   }
   function updateResponsiveScale() {
     if (!flip || !bookPageWidth || !bookPageHeight) return;
-    // Espacio real del escenario; conservar dimensiones internas del motor.
-    const availableW = Math.max(1, stage.clientWidth - 20);
-    const availableH = Math.max(1, stage.clientHeight - 20);
-    const spreadW = bookPageWidth * (singlePageMode() ? 1 : 2);
-    responsiveScale = Math.min(1, availableW / spreadW, availableH / bookPageHeight);
+    // La geometría y el tamaño del libro los controla PageFlip.
+    // Sólo el zoom solicitado por el lector aplica una transformación CSS.
+    responsiveScale = 1;
     updateCoverAlignment();
   }
   function updateCoverAlignment() {
@@ -240,9 +256,9 @@
         .filter(i=>i>=0 && i<pageCount).map(renderOnePage));
       if (flip!==thisFlip) return;
       if (direction>0) flip.flipNext('bottom');
-      else flip.flipPrev('top');
+      else flip.flipPrev('bottom');
       await new Promise(resolve=>setTimeout(resolve,880));
-    } finally { pageTurnPending=false; updateResponsiveScale(); }
+    } finally { pageTurnPending=false; scheduleRefit(80); }
   }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
   $('prev').addEventListener('click', () => turnOnePage(-1));

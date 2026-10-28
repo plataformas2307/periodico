@@ -178,3 +178,11 @@ html,body{height:100%;overflow:hidden}
 .page .page-content > canvas { backface-visibility:visible!important; -webkit-backface-visibility:visible!important; transform:none!important; -webkit-transform:none!important; }
 .page .page-back-canvas,.mobile-turn-sheet {display:none!important;}
 .book {transform-origin:center center!important; transition:none!important;}
+
+/* V4.1: las páginas se dibujan como imágenes de fondo ya rasterizadas.
+   Evita que el lienzo de alta resolución interfiera con las transformaciones
+   internas de PageFlip y mantiene la imagen visible en el reverso. */
+.page .page-content {background-color:#fff; background-repeat:no-repeat; background-position:center; background-size:100% 100%;}
+.page .page-content > canvas {visibility:hidden!important;}
+/* No transformar ni limitar el elemento administrado por PageFlip. */
+.book {max-width:none!important;max-height:none!important;transition:none!important;}
