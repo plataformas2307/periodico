@@ -13,6 +13,7 @@
   const progressKey = 'periodico_last_page_v3';
   let pageRatio = .72, resizeTimer = null, lastFitKey = "";
   let fullscreenTransitionUntil = 0, fullscreenScale = 1, bookPageWidth = 0, bookPageHeight = 0;
+  let responsiveScale = 1, coverShift = 0, lastPortrait = null, pageTurnPending = false;
   // Base pública de 500: 4 visitas ya registradas equivalen a 500.
   // MySQL conserva su conteo real y la deduplicación existente.
   const VISITOR_DISPLAY_OFFSET = 496;
@@ -33,9 +34,10 @@
     $('next').disabled = current >= pageCount; $('last').disabled = current >= pageCount;
     $('mobile-prev').disabled = current <= 1; $('mobile-next').disabled = current >= pageCount;
     try { localStorage.setItem(progressKey, String(current-1)); } catch (_) {}
-    markActiveThumb(current-1); ensureNearPages(current-1);
+    markActiveThumb(current-1); ensureNearPages(current-1); updateCoverAlignment();
   }
   function clearBook() {
+    pageTurnPending=false;
     if (flip) { try { flip.destroy(); } catch(e) { console.warn(e); } flip = null; }
     bookEl.innerHTML = '';
     masterCanvases = []; pageElements = []; displayCanvases = []; rendered.clear(); renderJobs.clear(); renderGeneration++;
@@ -87,6 +89,8 @@
       if (token !== loadingToken) return;
       hideStatus(); setControls(true); updateCounter();
       buildThumbs(); ensureNearPages(saved);
+      // En segundo plano, cargar todas las caras para evitar hojas blancas.
+      (async()=>{for(let i=0;i<pageCount && token===loadingToken;i++) await renderOnePage(i);})().catch(console.warn);
       $('download').href = url; $('download').download = displayName;
     } catch(err) {
       console.error(err); clearBook();
@@ -133,9 +137,10 @@
     const dims = fitDimensions();
     bookPageWidth = dims.width; bookPageHeight = dims.height;
     lastFitKey=`${dims.width}x${dims.height}:${singlePageMode()}`;
+    lastPortrait=singlePageMode();
     flip = new St.PageFlip(bookEl, {
       width:dims.width, height:dims.height, size:'fixed',
-      maxShadowOpacity:.55, showCover:false, mobileScrollSupport:false,
+      maxShadowOpacity:.55, showCover:!singlePageMode(), mobileScrollSupport:false,
       usePortrait:singlePageMode(), flippingTime:850, drawShadow:true, autoSize:false
     });
     flip.loadFromHTML(bookEl.querySelectorAll('.page'));
@@ -146,17 +151,35 @@
     if (pageIndex > 0) flip.turnToPage(Math.min(pageIndex,pageCount-1));
     lastPageIndex = Math.min(pageIndex,pageCount-1);
     updateCounter();
+    updateResponsiveScale();
   }
+  // V3.7: no destruir PageFlip durante resize; sólo escalar el libro.
+  // Únicamente se reconstruye al cruzar el límite móvil/escritorio.
   function refitBook() {
     if (!flip || !pageCount || !masterCanvases.length) return;
-    // Pantalla completa sólo modifica la presentación: NO destruir PageFlip.
-    if (document.fullscreenElement || Date.now() < fullscreenTransitionUntil) return;
-    const dims=fitDimensions();
-    const key=`${dims.width}x${dims.height}:${singlePageMode()}`;
-    if (key===lastFitKey) return;
-    lastFitKey=key;
-    const current = flip.getCurrentPageIndex();
-    initFlip(current);
+    if (singlePageMode() !== lastPortrait) {
+      const current=flip.getCurrentPageIndex();
+      initFlip(current);
+    } else {
+      updateResponsiveScale();
+    }
+  }
+  function updateResponsiveScale() {
+    if (!bookPageWidth || !bookPageHeight) return;
+    const availableWidth=Math.max(1,stage.clientWidth-18);
+    const availableHeight=Math.max(1,stage.clientHeight-18);
+    const width=bookPageWidth*(singlePageMode()?1:2);
+    responsiveScale=Math.min(1.6, availableWidth/width, availableHeight/bookPageHeight);
+    responsiveScale=Math.max(.15,responsiveScale);
+    updateCoverAlignment();
+  }
+  function updateCoverAlignment() {
+    if (!flip || !pageCount) return;
+    // La portada y la contraportada ocupan una sola hoja centrada.
+    // PageFlip conserva su estructura de pliego para el giro.
+    const current=flip.getCurrentPageIndex();
+    coverShift=(!singlePageMode() && (current===0 || current===pageCount-1))
+      ? (current===0 ? -bookPageWidth/2 : bookPageWidth/2) : 0;
     applyZoom();
   }
   function scheduleRefit(delay=160) {
@@ -177,7 +200,7 @@
         (stage.clientWidth - 28) / spreadWidth,
         (stage.clientHeight - 28) / bookPageHeight));
     }
-    applyZoom();
+    updateResponsiveScale();
   }
   document.addEventListener('fullscreenchange', () => {
     // El bug anterior ocurría porque resize/ResizeObserver destruían
@@ -190,22 +213,24 @@
     requestAnimationFrame(() => requestAnimationFrame(updateFullscreenScale));
     setTimeout(updateFullscreenScale, 200);
   });
-  function applyZoom() { bookEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom * fullscreenScale})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
-  // V3.6: las flechas y el gesto táctil comparten el motor nativo.
-  let arrowTurning = false;
-  function turnOnePage(direction) {
-    if (!flip || arrowTurning) return;
-    const current = flip.getCurrentPageIndex();
-    const target = current + direction;
-    if (target < 0 || target >= pageCount) return;
-    arrowTurning = true;
-    ensureNearPages(target);
+  function applyZoom() { bookEl.style.transform = `translate(${panX+coverShift*responsiveScale}px, ${panY}px) scale(${zoom * fullscreenScale * responsiveScale})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
+  // V3.7: un único giro nativo para flechas y gestos, precargando
+  // las dos caras necesarias ANTES de iniciar la animación.
+  async function turnOnePage(direction) {
+    if (!flip || pageTurnPending) return;
+    const current=flip.getCurrentPageIndex();
+    const target=current+direction;
+    if (target<0 || target>=pageCount) return;
+    pageTurnPending=true;
+    const thisFlip=flip;
     try {
-      if (direction > 0) flip.flipNext('bottom');
+      await Promise.all([current-1,current,current+1,target-1,target,target+1]
+        .filter(i=>i>=0 && i<pageCount).map(renderOnePage));
+      if (flip!==thisFlip) return;
+      if (direction>0) flip.flipNext('bottom');
       else flip.flipPrev('bottom');
-    } finally {
-      window.setTimeout(() => { arrowTurning = false; }, 900);
-    }
+      await new Promise(resolve=>setTimeout(resolve,900));
+    } finally { pageTurnPending=false; }
   }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
   $('prev').addEventListener('click', () => turnOnePage(-1));

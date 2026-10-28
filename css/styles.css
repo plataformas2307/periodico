@@ -155,3 +155,7 @@ html,body{height:100%;overflow:hidden}
 
 /* V3.6: sin superposición 3D artificial. */
 .mobile-turn-sheet {display:none !important;}
+
+/* V3.7: portada y contraportada individuales, escalado estable sin remontar DOM. */
+.book { transform-origin:center center; }
+.page,.page-content { background:#fff; }
