@@ -9,7 +9,7 @@
   let pageCount = 0, loadingToken = 0;
   let masterCanvases = [];
   let pageElements = [], displayCanvases = [], renderJobs = new Map(), rendered = new Set(), renderGeneration = 0;
-  let panX=0, panY=0, immersive=false, revealTimer=null, pinchStart=null;
+  let panX=0, panY=0, pinchStart=null;
   const progressKey = 'periodico_last_page_v3';
   let pageRatio = .72, resizeTimer = null, lastFitKey = "";
   const reader = document.querySelector('.reader');
@@ -275,19 +275,6 @@
     if(open){const i=flip?.getCurrentPageIndex()||0;for(let j=Math.max(0,i-3);j<Math.min(pageCount,i+6);j++)loadThumb(j).catch(()=>{}); if(window.IntersectionObserver){const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){loadThumb(Number(entry.target.dataset.index)).catch(()=>{});observer.unobserve(entry.target);}}),{root:$('thumbnails-grid'),rootMargin:'120px'});$('thumbnails-grid').querySelectorAll('.thumb').forEach(el=>observer.observe(el));}else{for(let j=0;j<pageCount;j++)setTimeout(()=>loadThumb(j).catch(()=>{}),j*80);}}
   });
   $('thumbnails-close').addEventListener('click',closeThumbs);
-  function showImmersiveControls(){
-    reader.classList.add('controls-visible');clearTimeout(revealTimer);
-    revealTimer=setTimeout(()=>{if(immersive&&!(!$('thumbnails-panel').hidden))reader.classList.remove('controls-visible');},3800);
-  }
-  $('immersive-toggle').addEventListener('click',()=>{
-    immersive=!immersive;reader.classList.toggle('immersive',immersive);
-    $('immersive-toggle').setAttribute('aria-pressed',String(immersive));
-    $('immersive-reveal').hidden=!immersive;
-    if(immersive)showImmersiveControls();else reader.classList.remove('controls-visible');
-    scheduleRefit(180);
-  });
-  $('immersive-reveal').addEventListener('click',showImmersiveControls);
-  stage.addEventListener('click',()=>{if(immersive)showImmersiveControls();});
   // Pellizcar con dos dedos; arrastrar el documento ampliado con uno.
   const activeTouches=new Map();let dragPoint=null;
   stage.addEventListener('pointerdown',e=>{

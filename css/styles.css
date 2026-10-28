@@ -120,11 +120,9 @@ html,body{height:100%;overflow:hidden}
  .visitor-counter {font-size:9px;}
 }
 
-/* V3.0: miniaturas, lectura inmersiva y zoom táctil */
+/* Miniaturas y zoom táctil */
 .thumbnails-panel{position:absolute;z-index:50;right:12px;bottom:60px;width:min(430px,calc(100vw - 24px));max-height:min(65dvh,560px);background:#101c2bf5;border:1px solid #526477;border-radius:14px;box-shadow:0 12px 45px #000b;display:flex;flex-direction:column;overflow:hidden}
 .thumbnails-panel[hidden]{display:none}.thumb-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #33485c}.thumb-head button{background:#253a4f;color:white;border:0;border-radius:7px;padding:5px 10px}
 .thumbnails-grid{padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(83px,1fr));gap:12px;overflow:auto;overscroll-behavior:contain}.thumb{background:#24354a;color:white;border:2px solid transparent;border-radius:8px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px}.thumb.active{border-color:#e3bc70}.thumb canvas{display:block;max-width:100%;height:110px;object-fit:contain;background:white}.thumb-placeholder{height:110px;width:75px;background:#e9eef4;display:grid;place-items:center;color:#42546c}
-.immersive-reveal{position:absolute;z-index:55;right:8px;bottom:8px;background:#13283de0;color:#fff;border:1px solid #62758b;border-radius:10px;padding:10px 13px}
-.reader.immersive .toolbar,.reader.immersive .visitor-counter{opacity:0;pointer-events:none;transition:opacity .25s}.reader.immersive.controls-visible .toolbar,.reader.immersive.controls-visible .visitor-counter{opacity:1;pointer-events:auto}.reader.immersive .stage{height:100%}.reader.immersive{padding-bottom:3px}.reader.immersive .immersive-reveal{display:block}.reader.immersive .thumbnails-panel{opacity:1;pointer-events:auto}
 .book{touch-action:pan-y}.reader.zoomed .book{touch-action:none}.reader.zoomed .stage{touch-action:none}
-@media(max-width:650px){.thumbnails-panel{left:6px;right:6px;bottom:54px;width:auto;max-height:65dvh}.thumbnails-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.reader.immersive .mobile-page-arrow{opacity:.55}}
+@media(max-width:650px){.thumbnails-panel{left:6px;right:6px;bottom:54px;width:auto;max-height:65dvh}.thumbnails-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
