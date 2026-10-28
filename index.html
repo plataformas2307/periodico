@@ -28,7 +28,7 @@
 <meta name="twitter:image" content="https://plataformas2307.github.io/periodico/perfil.jpg?v=27">
 
 
-  <link rel="stylesheet" href="css/styles.css?v=2.8">
+  <link rel="stylesheet" href="css/styles.css?v=3.0">
 </head>
 <body>
   <div class="app">
@@ -42,6 +42,7 @@
       <div class="reader-heading"><div><h1>Lectura interactiva</h1><p>Arrastra una esquina o usa las flechas para pasar las páginas.</p></div><span id="document-name" class="document-name">Periodico.pdf</span></div>
       <div id="stage" class="stage" aria-label="Visor de páginas">
         <div id="book" class="book"></div>
+        <button id="immersive-reveal" class="immersive-reveal" type="button" aria-label="Mostrar controles" hidden>☰</button>
         <button id="mobile-prev" class="mobile-page-arrow mobile-page-arrow--prev" type="button" aria-label="Página anterior" title="Página anterior">&#x276E;</button>
         <button id="mobile-next" class="mobile-page-arrow mobile-page-arrow--next" type="button" aria-label="Página siguiente" title="Página siguiente">&#x276F;</button>
         <div id="status" class="status" role="status"><span class="spinner"></span><span id="status-text">Cargando periódico…</span></div>
@@ -56,10 +57,16 @@
         <button id="zoom-out" class="control" title="Reducir" aria-label="Reducir zoom">−</button>
         <span id="zoom-value" class="zoom-value">100%</span>
         <button id="zoom-in" class="control" title="Ampliar" aria-label="Ampliar zoom">+</button>
+        <button id="thumbnails-toggle" class="control" type="button" title="Ver miniaturas" aria-label="Ver miniaturas" aria-expanded="false">▦</button>
+        <button id="immersive-toggle" class="control" type="button" title="Modo lectura inmersiva" aria-label="Modo lectura inmersiva" aria-pressed="false">◫</button>
         <button id="sound-toggle" class="control sound-toggle" title="Desactivar sonido de páginas" aria-label="Desactivar sonido de páginas" aria-pressed="true">♪</button>
         <button id="fullscreen-toolbar" class="control fullscreen-toolbar" title="Ver en pantalla completa" aria-label="Ver en pantalla completa">⛶ <span>Ampliar vista</span></button>
         <a id="download" class="control download" href="Periodico.pdf" download="Periodico.pdf" title="Descargar PDF">↓ <span>PDF</span></a>
       </nav>
+      <aside id="thumbnails-panel" class="thumbnails-panel" hidden aria-label="Miniaturas de las páginas">
+        <div class="thumb-head"><strong>Ir a una página</strong><button id="thumbnails-close" type="button" aria-label="Cerrar miniaturas">✕</button></div>
+        <div id="thumbnails-grid" class="thumbnails-grid"></div>
+      </aside>
       <p class="visitor-counter" id="visitor-counter" role="status" aria-live="polite" hidden>Contigo somos <strong id="visitor-number">—</strong> que hemos visto este periódico</p>
       <p class="hint" id="hint">En móvil se muestra una página a la vez. Puedes usar las flechas del teclado.</p>
     </main>
@@ -67,7 +74,7 @@
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
-  <script src="js/counter-config.js?v=2.8"></script>
-  <script src="js/app.js?v=2.8"></script>
+  <script src="js/counter-config.js?v=3.0"></script>
+  <script src="js/app.js?v=3.0"></script>
 </body>
 </html>

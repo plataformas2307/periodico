@@ -8,6 +8,9 @@
   let soundEnabled = true, audioContext = null, lastPageIndex = -1;
   let pageCount = 0, loadingToken = 0;
   let masterCanvases = [];
+  let pageElements = [], renderJobs = new Map(), rendered = new Set(), renderGeneration = 0;
+  let panX=0, panY=0, immersive=false, revealTimer=null, pinchStart=null;
+  const progressKey = 'periodico_last_page_v3';
   let pageRatio = .72, resizeTimer = null;
   const reader = document.querySelector('.reader');
   const worker = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -25,11 +28,13 @@
     $('first').disabled = current <= 1; $('prev').disabled = current <= 1;
     $('next').disabled = current >= pageCount; $('last').disabled = current >= pageCount;
     $('mobile-prev').disabled = current <= 1; $('mobile-next').disabled = current >= pageCount;
+    try { localStorage.setItem(progressKey, String(current-1)); } catch (_) {}
+    markActiveThumb(current-1); ensureNearPages(current-1);
   }
   function clearBook() {
     if (flip) { try { flip.destroy(); } catch(e) { console.warn(e); } flip = null; }
     bookEl.innerHTML = '';
-    masterCanvases = [];
+    masterCanvases = []; pageElements = []; rendered.clear(); renderJobs.clear(); renderGeneration++;
   }
   async function renderPdf(url, displayName) {
     const token = ++loadingToken;
@@ -56,33 +61,30 @@
       pageCount = pdf.numPages;
       if (!pageCount) throw new Error('El archivo no contiene páginas.');
       $('total-pages').textContent = `/ ${pageCount}`;
-      // Renderizar páginas a una resolución suficiente para lectura y zoom moderado.
-      masterCanvases = [];
+      // Crear la estructura completa sin rasterizar el PDF entero.
+      // PDF.js dibuja primero las páginas visibles y luego las próximas.
       const first = await pdf.getPage(1);
       const vp = first.getViewport({scale:1});
-      const ratio = vp.width / vp.height;
-      pageRatio = ratio;
-      // La proporción original del PDF se conserva en cada página.
+      pageRatio = vp.width / vp.height;
+      masterCanvases = []; pageElements = []; rendered.clear();
+      bookEl.replaceChildren();
       for (let n=1; n<=pageCount; n++) {
-        if (token !== loadingToken) return;
-        showStatus(`Preparando páginas… ${n} de ${pageCount}`);
-        const page = n === 1 ? first : await pdf.getPage(n);
-        const viewport = page.getViewport({scale:1});
-        const targetScale = Math.min(2, 1200 / Math.max(viewport.width, viewport.height));
-        const renderViewport = page.getViewport({scale:targetScale});
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.ceil(renderViewport.width); canvas.height = Math.ceil(renderViewport.height);
-        const context = canvas.getContext('2d', {alpha:false});
-        await page.render({canvasContext:context, viewport:renderViewport}).promise;
-        const wrapper = document.createElement('div'); wrapper.className = 'page';
-        const content = document.createElement('div'); content.className = 'page-content';
+        const wrapper = document.createElement('div'); wrapper.className='page';
+        const content = document.createElement('div'); content.className='page-content';
+        const canvas=document.createElement('canvas'); canvas.width=2;canvas.height=2;
         content.appendChild(canvas); wrapper.appendChild(content); bookEl.appendChild(wrapper);
-        masterCanvases.push(canvas);
-        page.cleanup();
+        pageElements.push(wrapper); masterCanvases.push(canvas);
       }
       if (token !== loadingToken) return;
-      initFlip(0);
-      zoom = 1; applyZoom(); hideStatus(); setControls(true); updateCounter();
+      let saved=0;
+      try { saved=Math.max(0,Math.min(pageCount-1,Number(localStorage.getItem(progressKey))||0)); } catch (_) {}
+      initFlip(saved);
+      zoom=1;panX=0;panY=0;applyZoom();
+      // Las primeras páginas se pintan antes de ocultar el indicador de carga.
+      await Promise.all([renderOnePage(saved),renderOnePage(Math.min(saved+1,pageCount-1))]);
+      if (token !== loadingToken) return;
+      hideStatus(); setControls(true); updateCounter();
+      buildThumbs(); ensureNearPages(saved);
       $('download').href = url; $('download').download = displayName;
     } catch(err) {
       console.error(err); clearBook();
@@ -101,27 +103,26 @@
   // Recrear el libro desde canvases maestros que NUNCA pertenecen al DOM de PageFlip.
   // Esto evita que destroy() borre o invalide las páginas al salir de pantalla completa.
   function initFlip(pageIndex = 0) {
-    if (!pageCount || !masterCanvases.length) return;
+    if (!pageCount || !pageElements.length) return;
     if (flip) {
       try { flip.destroy(); } catch(e) { console.warn('Reinicio del visor:', e); }
       flip = null;
     }
     bookEl.replaceChildren();
-    const fragment = document.createDocumentFragment();
+    // Canvas renderizados sobreviven a PageFlip.destroy() porque están fuera del DOM interno.
+    const fragment=document.createDocumentFragment();
+    pageElements=[];
     for (const original of masterCanvases) {
-      const canvas = document.createElement('canvas');
-      canvas.width = original.width; canvas.height = original.height;
-      canvas.getContext('2d', {alpha:false}).drawImage(original, 0, 0);
-      const wrapper = document.createElement('div'); wrapper.className = 'page';
-      const content = document.createElement('div'); content.className = 'page-content';
-      content.appendChild(canvas); wrapper.appendChild(content); fragment.appendChild(wrapper);
+      const wrapper=document.createElement('div');wrapper.className='page';
+      const content=document.createElement('div');content.className='page-content';
+      content.appendChild(original);wrapper.appendChild(content);fragment.appendChild(wrapper);pageElements.push(wrapper);
     }
     bookEl.appendChild(fragment);
     const dims = fitDimensions();
     flip = new St.PageFlip(bookEl, {
       width:dims.width, height:dims.height, size:'fixed',
-      maxShadowOpacity:.35, showCover:false, mobileScrollSupport:false,
-      usePortrait:singlePageMode(), flippingTime:600, drawShadow:true, autoSize:false
+      maxShadowOpacity:.55, showCover:false, mobileScrollSupport:false,
+      usePortrait:singlePageMode(), flippingTime:850, drawShadow:true, autoSize:false
     });
     flip.loadFromHTML(bookEl.querySelectorAll('.page'));
     flip.on('flip', () => { const idx = flip.getCurrentPageIndex(); if (lastPageIndex >= 0 && idx !== lastPageIndex) playPageSound(); lastPageIndex = idx; updateCounter(); });
@@ -151,7 +152,7 @@
     $('fullscreen-toolbar').innerHTML = active ? '⛶ <span>Salir de pantalla completa</span>' : '⛶ <span>Ampliar vista</span>';
     scheduleRefit(220);
   });
-  function applyZoom() { bookEl.style.transform = `scale(${zoom})`; $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
+  function applyZoom() { bookEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
   $('first').addEventListener('click', () => flip?.turnToPage(0));
   $('prev').addEventListener('click', () => flip?.flipPrev());
   $('next').addEventListener('click', () => flip?.flipNext());
@@ -163,8 +164,8 @@
     const n = Math.max(1, Math.min(pageCount, Number(e.target.value)||1));
     flip.turnToPage(n-1); updateCounter();
   });
-  $('zoom-in').addEventListener('click', () => { zoom = Math.min(1.6, +(zoom+.1).toFixed(2)); applyZoom(); });
-  $('zoom-out').addEventListener('click', () => { zoom = Math.max(.7, +(zoom-.1).toFixed(2)); applyZoom(); });
+  $('zoom-in').addEventListener('click', () => { zoom = Math.min(3, +(zoom+.2).toFixed(2)); applyZoom(); });
+  $('zoom-out').addEventListener('click', () => { zoom = Math.max(1, +(zoom-.2).toFixed(2)); if(zoom===1){panX=0;panY=0;} applyZoom(); });
   async function toggleFullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -211,6 +212,90 @@
     if (e.key === 'ArrowRight') { flip.flipNext(); e.preventDefault(); }
     if (e.key === 'ArrowLeft') { flip.flipPrev(); e.preventDefault(); }
   });
+  // Render progresivo: un canvas por página, con cola de trabajos y caché limitada.
+  async function renderOnePage(index) {
+    if (!pdf || index<0 || index>=pageCount || rendered.has(index)) return;
+    if (renderJobs.has(index)) return renderJobs.get(index);
+    const currentPdf=pdf, generation=renderGeneration;
+    const job=(async()=>{
+      const page=await currentPdf.getPage(index+1);
+      if(generation!==renderGeneration) return;
+      const v=page.getViewport({scale:Math.min(2.25,1500/Math.max(page.view[2]-page.view[0],page.view[3]-page.view[1]))});
+      const canvas=masterCanvases[index];
+      canvas.width=Math.ceil(v.width);canvas.height=Math.ceil(v.height);
+      await page.render({canvasContext:canvas.getContext('2d',{alpha:false}),viewport:v}).promise;
+      if(generation===renderGeneration){rendered.add(index);page.cleanup();}
+    })().catch(e=>console.warn('Página '+(index+1),e)).finally(()=>renderJobs.delete(index));
+    renderJobs.set(index,job);return job;
+  }
+  function ensureNearPages(index) {
+    if(!pdf || !pageCount)return;
+    const indices=[index,index+1,index-1,index+2,index-2,index+3];
+    indices.forEach(i=>{if(i>=0&&i<pageCount)renderOnePage(i);});
+  }
+  function buildThumbs(){
+    const grid=$('thumbnails-grid');grid.replaceChildren();
+    for(let i=0;i<pageCount;i++){
+      const b=document.createElement('button');b.type='button';b.className='thumb';b.dataset.index=i;
+      const ph=document.createElement('span');ph.className='thumb-placeholder';ph.textContent='…';
+      const label=document.createElement('span');label.textContent='Página '+(i+1);
+      b.append(ph,label);b.addEventListener('click',()=>{flip?.turnToPage(i);ensureNearPages(i);closeThumbs();});grid.append(b);
+    }
+    markActiveThumb(flip?.getCurrentPageIndex()||0);
+  }
+  function markActiveThumb(i){document.querySelectorAll('.thumb').forEach(el=>el.classList.toggle('active',Number(el.dataset.index)===i));}
+  async function loadThumb(index){
+    const btn=$('thumbnails-grid').querySelector(`[data-index="${index}"]`);
+    if(!btn || btn.querySelector('canvas') || !pdf)return;
+    const page=await pdf.getPage(index+1), vp=page.getViewport({scale:1});
+    const small=page.getViewport({scale:115/vp.height});
+    const canvas=document.createElement('canvas');canvas.width=Math.ceil(small.width);canvas.height=Math.ceil(small.height);
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:small}).promise;
+    const placeholder=btn.querySelector('.thumb-placeholder');if(placeholder)placeholder.replaceWith(canvas);
+  }
+  function closeThumbs(){$('thumbnails-panel').hidden=true;$('thumbnails-toggle').setAttribute('aria-expanded','false');}
+  $('thumbnails-toggle').addEventListener('click',()=>{
+    const open=$('thumbnails-panel').hidden;
+    $('thumbnails-panel').hidden=!open;$('thumbnails-toggle').setAttribute('aria-expanded',String(open));
+    if(open){const i=flip?.getCurrentPageIndex()||0;for(let j=Math.max(0,i-3);j<Math.min(pageCount,i+6);j++)loadThumb(j).catch(()=>{}); if(window.IntersectionObserver){const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){loadThumb(Number(entry.target.dataset.index)).catch(()=>{});observer.unobserve(entry.target);}}),{root:$('thumbnails-grid'),rootMargin:'120px'});$('thumbnails-grid').querySelectorAll('.thumb').forEach(el=>observer.observe(el));}else{for(let j=0;j<pageCount;j++)setTimeout(()=>loadThumb(j).catch(()=>{}),j*80);}}
+  });
+  $('thumbnails-close').addEventListener('click',closeThumbs);
+  function showImmersiveControls(){
+    reader.classList.add('controls-visible');clearTimeout(revealTimer);
+    revealTimer=setTimeout(()=>{if(immersive&&!(!$('thumbnails-panel').hidden))reader.classList.remove('controls-visible');},3800);
+  }
+  $('immersive-toggle').addEventListener('click',()=>{
+    immersive=!immersive;reader.classList.toggle('immersive',immersive);
+    $('immersive-toggle').setAttribute('aria-pressed',String(immersive));
+    $('immersive-reveal').hidden=!immersive;
+    if(immersive)showImmersiveControls();else reader.classList.remove('controls-visible');
+    scheduleRefit(180);
+  });
+  $('immersive-reveal').addEventListener('click',showImmersiveControls);
+  stage.addEventListener('click',()=>{if(immersive)showImmersiveControls();});
+  // Pellizcar con dos dedos; arrastrar el documento ampliado con uno.
+  const activeTouches=new Map();let dragPoint=null;
+  stage.addEventListener('pointerdown',e=>{
+    if(e.target.closest('button'))return;
+    activeTouches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(activeTouches.size===2){const a=[...activeTouches.values()];pinchStart={distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),zoom};dragPoint=null;}
+    else if(zoom>1.01){dragPoint={x:e.clientX,y:e.clientY,panX,panY};stage.setPointerCapture(e.pointerId);}
+  });
+  stage.addEventListener('pointermove',e=>{
+    if(!activeTouches.has(e.pointerId))return;
+    activeTouches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(activeTouches.size===2&&pinchStart){
+      const a=[...activeTouches.values()];zoom=Math.max(1,Math.min(3,pinchStart.zoom*Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)/Math.max(1,pinchStart.distance)));
+      if(zoom===1){panX=0;panY=0;}applyZoom();
+    }else if(activeTouches.size===1&&dragPoint&&zoom>1){
+      const boundX=stage.clientWidth*(zoom-1)/2,boundY=stage.clientHeight*(zoom-1)/2;
+      panX=Math.max(-boundX,Math.min(boundX,dragPoint.panX+e.clientX-dragPoint.x));
+      panY=Math.max(-boundY,Math.min(boundY,dragPoint.panY+e.clientY-dragPoint.y));applyZoom();
+    }
+  });
+  function endPointer(e){activeTouches.delete(e.pointerId);if(activeTouches.size<2)pinchStart=null;dragPoint=null;}
+  stage.addEventListener('pointerup',endPointer);stage.addEventListener('pointercancel',endPointer);
+  stage.addEventListener('dblclick',()=>{zoom=zoom>1?1:2;panX=0;panY=0;applyZoom();});
   // El contador usa PHP + MySQL en un servidor HTTPS externo a GitHub Pages.
   // Configura la URL de contador.php en counter-config.js.
   async function loadVisitorCount() {
