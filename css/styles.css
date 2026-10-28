@@ -189,3 +189,10 @@ html,body{height:100%;overflow:hidden}
 
 /* V4.3: el zoom/ajuste se aplica al contenedor estable, nunca a las hojas. */
 .book{transform-origin:center center!important;transition:none!important;}
+
+
+/* V4.4: no aplicar transformaciones 3D adicionales a las hojas de PageFlip.
+   El contenido se mantiene visible aunque el motor cambie de orientación. */
+.page .page-content { transform:none!important; -webkit-transform:none!important; }
+.page .page-content > canvas { visibility:visible!important; }
+.mobile-turn-sheet,.page-back-canvas {display:none!important;}

@@ -164,31 +164,34 @@
     updateCounter();
     updateResponsiveScale();
   }
-  // V4.3: el redimensionamiento NO llama update() ni destroy() de PageFlip.
-  // Los lienzos y la instancia sobreviven: sólo se escala el libro ya montado.
-  // Se reconstruye exclusivamente al cruzar el umbral móvil/escritorio.
+  // V4.4: volver a calcular el tamaño real del motor después de que
+  // el contenedor se estabilice. Los lienzos maestros están fuera del DOM.
+  // Nunca reutilizar páginas que PageFlip haya envuelto o destruido.
   let resizingBook = false;
   function refitBook() {
-    if (!flip || !pageCount || resizingBook || pageTurnPending) return;
-    const portrait = singlePageMode();
-    if (portrait !== lastPortrait) {
-      resizingBook = true;
-      try {
-        const current = flip.getCurrentPageIndex();
-        initFlip(current);
-      } catch (error) { console.error('Cambio de modo:', error); }
-      finally { resizingBook = false; }
+    if (!flip || !pageCount || resizingBook || pageTurnPending) {
+      if (pageTurnPending) scheduleRefit(500);
       return;
     }
-    updateResponsiveScale();
+    const dims=fitDimensions();
+    const key=`${dims.width}x${dims.height}:${singlePageMode()}`;
+    if (key===lastFitKey) return;
+    resizingBook=true;
+    const current=flip.getCurrentPageIndex();
+    try {
+      // Reconstruir únicamente las hojas del visor, no el PDF ni sus renders.
+      initFlip(Math.min(current,pageCount-1));
+      rendered.forEach(paintDisplay);
+      ensureNearPages(current);
+    } catch(error) {
+      console.error('Error al adaptar el visor:',error);
+      showStatus('No se pudo ajustar la vista. Actualiza la página.',true);
+    } finally {resizingBook=false;}
   }
   function updateResponsiveScale() {
-    if (!flip || !bookPageWidth || !bookPageHeight) return;
-    const spreadWidth = bookPageWidth * (singlePageMode() ? 1 : 2);
-    const availableWidth = Math.max(1, stage.clientWidth - 18);
-    const availableHeight = Math.max(1, stage.clientHeight - 18);
-    responsiveScale = Math.min(1.5, availableWidth / spreadWidth, availableHeight / bookPageHeight);
-    if (!Number.isFinite(responsiveScale) || responsiveScale <= 0) responsiveScale = 1;
+    // La geometría se calcula dentro de PageFlip, no mediante un CSS scale
+    // externo que puede desplazar las hojas fuera del contenedor.
+    responsiveScale=1;
     updateCoverAlignment();
   }
   function updateCoverAlignment() {
@@ -198,16 +201,14 @@
       ? (current===0 ? -bookPageWidth/2 : bookPageWidth/2) : 0;
     applyZoom();
   }
-  function scheduleRefit(delay=180) {
+  function scheduleRefit(delay=360) {
     clearTimeout(resizeTimer);
-    resizeTimer=setTimeout(() => requestAnimationFrame(refitBook),delay);
+    resizeTimer=setTimeout(()=>requestAnimationFrame(refitBook),delay);
   }
-  window.addEventListener('resize', () => scheduleRefit());
-  window.addEventListener('orientationchange', () => scheduleRefit(350));
-  // Observar el contenedor permite ajustar también paneles laterales y cambios
-  // de disposición que no disparan window.resize.
-  if (window.ResizeObserver) {
-    const stageObserver=new ResizeObserver(() => scheduleRefit(120));
+  window.addEventListener('resize',()=>scheduleRefit());
+  window.addEventListener('orientationchange',()=>scheduleRefit(550));
+  if(window.ResizeObserver) {
+    const stageObserver=new ResizeObserver(()=>scheduleRefit(420));
     stageObserver.observe(stage);
   }
   function updateFullscreenScale() {
@@ -229,8 +230,8 @@
     const active = document.fullscreenElement === reader;
     $('fullscreen').textContent = active ? '⛶ Salir de pantalla completa' : '⛶ Ver en pantalla completa';
     $('fullscreen-toolbar').innerHTML = active ? '⛶ <span>Salir de pantalla completa</span>' : '⛶ <span>Ampliar vista</span>';
-    requestAnimationFrame(() => requestAnimationFrame(updateResponsiveScale));
-    setTimeout(updateResponsiveScale, 200);
+    requestAnimationFrame(() => requestAnimationFrame(() => scheduleRefit(300)));
+    setTimeout(() => scheduleRefit(450), 200);
   });
   function applyZoom() { bookEl.style.transform = `translate(${panX+coverShift*responsiveScale}px, ${panY}px) scale(${zoom * responsiveScale})`; reader.classList.toggle('zoomed',zoom>1.01); $('zoom-value').textContent = Math.round(zoom*100)+'%'; }
   // V3.7: un único giro nativo para flechas y gestos, precargando
@@ -247,7 +248,7 @@
         .filter(i=>i>=0 && i<pageCount).map(renderOnePage));
       if (flip!==thisFlip) return;
       if (direction>0) flip.flipNext('bottom');
-      else flip.flipPrev('top');
+      else flip.flipPrev('bottom');
       await new Promise(resolve=>setTimeout(resolve,880));
     } finally { pageTurnPending=false; scheduleRefit(80); }
   }
