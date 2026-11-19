@@ -1,2 +1,3 @@
-// API del contador en Hostinger. No colocar credenciales de MySQL aquí.
-window.PERIODICO_COUNTER_ENDPOINT = 'https://peachpuff-baboon-866507.hostingersite.com/periodico-api/contador.php';
+// Coloca la URL HTTPS real del contador PHP de Hostinger. No introducir claves MySQL aquí.
+// El PHP debe devolver JSON {"count": 501} y deduplicar visitantes del lado del servidor.
+window.COUNTER_CONFIG={endpoint:'',base:500};
