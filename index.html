@@ -1,8 +1,80 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17191d"><title>Sexta Regiduría Ixtapaluca | Periódico Digital</title><meta name="description" content="Periódico digital de la Sexta Regiduría de Ixtapaluca. Trabajo en territorio, gestión y resultados."><meta property="og:type" content="website"><meta property="og:locale" content="es_MX"><meta property="og:title" content="Sexta Regiduría Ixtapaluca | Periódico Digital"><meta property="og:description" content="Trabajo en territorio, gestión y resultados. Lee el periódico digital."><meta property="og:image" content="https://plataformas2307.github.io/periodico/favi.png"><meta property="og:url" content="https://plataformas2307.github.io/periodico/"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://plataformas2307.github.io/periodico/favi.png"><link rel="icon" href="favi.png"><link rel="stylesheet" href="css/styles.css?v=3.1.0"></head><body><header><strong>Sexta Regiduría · Periódico Digital</strong><span id="counter" aria-live="polite">Contigo somos 500</span></header><main id="stage"><button id="prev" class="side" aria-label="Página anterior">‹</button><div id="viewport"><div id="panzoom"><div id="book"></div></div></div><button id="next" class="side" aria-label="Página siguiente">›</button></main><nav aria-label="Controles"><button id="first" title="Primera página">⇤</button><button id="back" title="Anterior">‹</button><input id="page" type="number" min="1" value="1" aria-label="Número de página"><span id="total">/ —</span><button id="forward" title="Siguiente">›</button><button id="last" title="Última página">⇥</button><button id="zoomOut" title="Alejar">−</button><button id="zoomIn" title="Acercar">＋</button><button id="thumbsButton" title="Miniaturas">▦</button><button id="sound" title="Activar o desactivar sonido">♫</button><button id="fullscreen" title="Pantalla completa">⛶</button><a href="Periodico.pdf" download title="Descargar PDF" aria-label="Descargar PDF">↓</a>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121923">
+  <meta name="description" content="Lee nuestro periódico digital en formato interactivo, página por página.">
+  
+  
+<!-- Favicon del navegador -->
+<link rel="icon" type="image/png" sizes="any" href="./favi.png?v=27">
+<link rel="shortcut icon" type="image/png" href="./favi.png?v=27">
+<link rel="apple-touch-icon" href="./favi.png?v=27">
+
+ 
+<title>Mi periódico | Edición digital</title>
+<meta name="description" content="Consulta y hojea nuestro periódico digital de forma interactiva.">
+
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_MX">
+<meta property="og:title" content="Mi periódico | Edición digital">
+<meta property="og:description" content="Consulta y hojea nuestro periódico digital.">
+<meta property="og:url" content="https://plataformas2307.github.io/periodico/">
+<meta property="og:image" content="https://plataformas2307.github.io/periodico/perfil.jpg?v=27">
+<meta property="og:image:secure_url" content="https://plataformas2307.github.io/periodico/perfil.jpg?v=27">
+<meta property="og:image:type" content="image/jpeg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://plataformas2307.github.io/periodico/perfil.jpg?v=27">
 
 
-<a class="wa-community" href="https://chat.whatsapp.com/Ld80pj3jYweLGKLl5i0NKv" target="_blank" rel="noopener noreferrer" aria-label="Unirse a la comunidad de WhatsApp" title="Unirse a la comunidad de WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.5 3.5A11.8 11.8 0 0 0 12.1 0C5.5 0 .1 5.4.1 12c0 2.1.6 4.1 1.6 5.9L0 24l6.3-1.6c1.8 1 3.8 1.5 5.8 1.5h.1C18.7 23.9 24 18.5 24 12c0-3.2-1.2-6.2-3.5-8.5ZM12.1 21.9c-1.8 0-3.5-.5-5-1.4l-.4-.2-3.7 1 1-3.6-.2-.4A9.8 9.8 0 0 1 2.2 12a9.9 9.9 0 1 1 9.9 9.9Zm5.4-7.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.2-.2.3-.8.9-1 1.1-.2.2-.4.2-.7.1-.3-.1-1.2-.5-2.3-1.4-.8-.7-1.4-1.6-1.6-1.9-.2-.3 0-.5.1-.7l.5-.6.3-.5c.1-.2 0-.4 0-.5l-.9-2.1c-.2-.5-.5-.4-.7-.4h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.7 1.1 2.9c.1.2 2 3.1 4.8 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.4Z"/></svg><span>Únete a nuestra comunidad</span></a></nav>
+  <link rel="stylesheet" href="css/styles.css?v=4.5">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-icon" aria-hidden="true">▤</span><div><strong>Mi periódico</strong><small>Edición digital</small></div></div>
+      <div class="top-actions">
+        <button id="fullscreen" class="file-button fullscreen-label" title="Ver en pantalla completa" aria-label="Ver en pantalla completa">⛶ Ver en pantalla completa</button>
+      </div>
+    </header>
+    <main class="reader">
+      <div class="reader-heading"><div><h1>Lectura interactiva</h1><p>Arrastra una esquina o usa las flechas para pasar las páginas.</p></div><span id="document-name" class="document-name">Periodico.pdf</span></div>
+      <div id="stage" class="stage" aria-label="Visor de páginas">
+        <div id="book" class="book"></div>
 
-<aside id="thumbs" hidden><button id="closeThumbs">Cerrar ×</button><div id="thumbGrid"></div></aside><div id="notice" role="status" aria-live="polite"></div>
+        <button id="mobile-prev" class="mobile-page-arrow mobile-page-arrow--prev" type="button" aria-label="Página anterior" title="Página anterior">&#x276E;</button>
+        <button id="mobile-next" class="mobile-page-arrow mobile-page-arrow--next" type="button" aria-label="Página siguiente" title="Página siguiente">&#x276F;</button>
+        <div id="status" class="status" role="status"><span class="spinner"></span><span id="status-text">Cargando periódico…</span></div>
+      </div>
+      <nav class="toolbar" aria-label="Controles de lectura">
+        <button id="first" class="control" title="Primera página" aria-label="Primera página">⇤</button>
+        <button id="prev" class="control" title="Anterior" aria-label="Página anterior">←</button>
+        <div class="page-counter"><label for="page-input">Página</label><input id="page-input" type="number" min="1" value="1" aria-label="Ir a página"><span id="total-pages">/ —</span></div>
+        <button id="next" class="control" title="Siguiente" aria-label="Página siguiente">→</button>
+        <button id="last" class="control" title="Última página" aria-label="Última página">⇥</button>
+        <span class="toolbar-separator"></span>
+        <button id="zoom-out" class="control" title="Reducir" aria-label="Reducir zoom">−</button>
+        <span id="zoom-value" class="zoom-value">100%</span>
+        <button id="zoom-in" class="control" title="Ampliar" aria-label="Ampliar zoom">+</button>
+        <button id="thumbnails-toggle" class="control" type="button" title="Ver miniaturas" aria-label="Ver miniaturas" aria-expanded="false">▦</button>
 
-<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script><script src="js/counter-config.js?v=3.1.0"></script><script type="module" src="js/app.js?v=3.1.0"></script></body></html>
+        <button id="sound-toggle" class="control sound-toggle" title="Desactivar sonido de páginas" aria-label="Desactivar sonido de páginas" aria-pressed="true">♪</button>
+        <button id="fullscreen-toolbar" class="control fullscreen-toolbar" title="Ver en pantalla completa" aria-label="Ver en pantalla completa">⛶ <span>Ampliar vista</span></button>
+        <a id="download" class="control download" href="Periodico.pdf" download="Periodico.pdf" title="Descargar PDF">↓ <span>PDF</span></a>
+      </nav>
+      <aside id="thumbnails-panel" class="thumbnails-panel" hidden aria-label="Miniaturas de las páginas">
+        <div class="thumb-head"><strong>Ir a una página</strong><button id="thumbnails-close" type="button" aria-label="Cerrar miniaturas">✕</button></div>
+        <div id="thumbnails-grid" class="thumbnails-grid"></div>
+      </aside>
+      <p class="visitor-counter" id="visitor-counter" role="status" aria-live="polite" hidden>Contigo somos <strong id="visitor-number">—</strong> que hemos visto este periódico</p>
+      <p class="hint" id="hint">En móvil se muestra una página a la vez. Puedes usar las flechas del teclado.</p>
+    </main>
+    <footer>Visor de lectura · Compatible con escritorio y móvil</footer>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+  <script src="js/counter-config.js?v=3.1"></script>
+  <script src="js/app.js?v=4.5"></script>
+</body>
+</html>
